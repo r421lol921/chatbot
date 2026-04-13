@@ -159,7 +159,7 @@ export function ChatShell() {
 
       <DataStreamHandler />
 
-      {/* credit card alert removed — not using Vercel AI Gateway */}
+
     </>
   );
 }
