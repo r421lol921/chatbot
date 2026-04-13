@@ -1,6 +1,11 @@
-import { customProvider, gateway } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { customProvider } from "ai";
 import { isTestEnvironment } from "../constants";
-import { titleModel } from "./models";
+
+const openrouter = createOpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY ?? "",
+});
 
 export const myProvider = isTestEnvironment
   ? (() => {
@@ -14,17 +19,17 @@ export const myProvider = isTestEnvironment
     })()
   : null;
 
-export function getLanguageModel(modelId: string) {
+export function getLanguageModel(_modelId: string) {
   if (isTestEnvironment && myProvider) {
-    return myProvider.languageModel(modelId);
+    return myProvider.languageModel("chat-model");
   }
 
-  return gateway.languageModel(modelId);
+  return openrouter("openai/gpt-oss-120b:free");
 }
 
 export function getTitleModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("title-model");
   }
-  return gateway.languageModel(titleModel.id);
+  return openrouter("openai/gpt-oss-120b:free");
 }
