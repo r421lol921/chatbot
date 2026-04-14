@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
     cachedNavigations: true,
     appNewScrollHandler: true,
     inlineCss: true,
-    turbopackFileSystemCacheForDev: true,
+    turbopackFileSystemCacheForDev: false,
   },
 };
 

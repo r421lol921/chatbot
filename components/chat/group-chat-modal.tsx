@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusIcon } from "./icons";
+import { UsersIcon, XIcon } from "lucide-react";
 
 export function PureGroupChatModal({
   chatId,
@@ -27,9 +27,10 @@ export function PureGroupChatModal({
   const [loading, setLoading] = useState(false);
 
   const handleAddEmail = () => {
-    if (emailInput.trim() && emailInput.includes("@")) {
-      if (!emails.includes(emailInput.trim())) {
-        setEmails([...emails, emailInput.trim()]);
+    const trimmed = emailInput.trim();
+    if (trimmed && trimmed.includes("@")) {
+      if (!emails.includes(trimmed)) {
+        setEmails([...emails, trimmed]);
         setEmailInput("");
       } else {
         toast.error("Email already added");
@@ -55,10 +56,8 @@ export function PureGroupChatModal({
         `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/group-chat`,
         {
           method: "POST",
-          body: JSON.stringify({
-            chatId,
-            emails,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId, emails }),
         }
       );
 
@@ -66,7 +65,7 @@ export function PureGroupChatModal({
         throw new Error("Failed to invite members");
       }
 
-      toast.success(`Invitations sent to ${emails.length} member(s)`);
+      toast.success(`${emails.length} member${emails.length !== 1 ? "s" : ""} added to this chat`);
       setEmails([]);
       onOpenChange(false);
     } catch (_error) {
@@ -81,11 +80,11 @@ export function PureGroupChatModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <PlusIcon className="size-5" />
+            <UsersIcon className="size-4" />
             Invite to Group Chat
           </DialogTitle>
           <DialogDescription>
-            Add members to this chat by email address
+            Add people by email to collaborate in this chat alongside the AI.
           </DialogDescription>
         </DialogHeader>
 
@@ -95,33 +94,37 @@ export function PureGroupChatModal({
               placeholder="Enter email address"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleAddEmail()}
-              className="flex-1"
+              onKeyDown={(e) => e.key === "Enter" && handleAddEmail()}
+              className="flex-1 text-sm"
             />
             <Button
               size="sm"
               onClick={handleAddEmail}
               variant="secondary"
+              disabled={!emailInput.trim()}
             >
               Add
             </Button>
           </div>
 
           {emails.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Members to invite:</p>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Inviting {emails.length} member{emails.length !== 1 ? "s" : ""}
+              </p>
               <div className="space-y-1">
                 {emails.map((email) => (
                   <div
                     key={email}
-                    className="flex items-center justify-between rounded-lg bg-muted p-2 text-sm"
+                    className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/40 px-3 py-2 text-sm"
                   >
-                    <span>{email}</span>
+                    <span className="text-foreground">{email}</span>
                     <button
                       onClick={() => handleRemoveEmail(email)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="ml-2 text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label={`Remove ${email}`}
                     >
-                      ×
+                      <XIcon className="size-3.5" />
                     </button>
                   </div>
                 ))}
@@ -134,7 +137,11 @@ export function PureGroupChatModal({
             disabled={emails.length === 0 || loading}
             className="w-full"
           >
-            {loading ? "Sending..." : `Invite ${emails.length} Member${emails.length !== 1 ? "s" : ""}`}
+            {loading
+              ? "Sending invitations..."
+              : emails.length === 0
+              ? "Add emails above"
+              : `Invite ${emails.length} Member${emails.length !== 1 ? "s" : ""}`}
           </Button>
         </div>
       </DialogContent>

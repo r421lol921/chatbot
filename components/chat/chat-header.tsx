@@ -1,9 +1,11 @@
 "use client";
 
-import { PanelLeftIcon } from "lucide-react";
-import { memo } from "react";
+import { PanelLeftIcon, UsersIcon } from "lucide-react";
+import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSidebar } from "@/components/ui/sidebar";
+import { GroupChatModal } from "./group-chat-modal";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
 
 function PureChatHeader({
@@ -16,6 +18,7 @@ function PureChatHeader({
   isReadonly: boolean;
 }) {
   const { state, toggleSidebar, isMobile } = useSidebar();
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
 
   if (state === "collapsed" && !isMobile) {
     return null;
@@ -42,8 +45,32 @@ function PureChatHeader({
         />
       )}
 
-      <img src="/images/logo.png" alt="PeytOtoria" className="ml-auto hidden size-6 rounded-full md:block" />
-      <span className="hidden font-semibold text-sm md:block">PeytOtoria</span>
+      <div className="ml-auto flex items-center gap-2">
+        {!isReadonly && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="size-7 rounded-lg border border-border/40 p-0 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+                onClick={() => setGroupModalOpen(true)}
+                size="icon"
+                variant="ghost"
+                aria-label="Invite to group chat"
+              >
+                <UsersIcon className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Invite to group chat</TooltipContent>
+          </Tooltip>
+        )}
+        <img src="/images/logo.png" alt="PeytOtoria" className="hidden size-6 rounded-full md:block" />
+        <span className="hidden font-semibold text-sm md:block">PeytOtoria</span>
+      </div>
+
+      <GroupChatModal
+        chatId={chatId}
+        isOpen={groupModalOpen}
+        onOpenChange={setGroupModalOpen}
+      />
     </header>
   );
 }
