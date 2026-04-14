@@ -8,7 +8,12 @@ import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "PeytOtoria",
-  description: "PeytOtoria - Chat with Lio 1.0, your AI assistant developed by PeytOtoria.com developers.",
+  description: "PeytOtoria - Chat with Lio, your AI assistant developed by PeytOtoria.com developers.",
+  icons: {
+    icon: "/favicon.jpg",
+    shortcut: "/favicon.jpg",
+    apple: "/favicon.jpg",
+  },
 };
 
 export const viewport = {

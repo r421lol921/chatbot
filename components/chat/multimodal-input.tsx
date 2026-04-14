@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
+import { chatModels } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -588,16 +589,50 @@ function PureAttachmentsButton({
 const AttachmentsButton = memo(PureAttachmentsButton);
 
 function PureModelSelectorCompact({
-  selectedModelId: _selectedModelId,
-  onModelChange: _onModelChange,
+  selectedModelId,
+  onModelChange,
 }: {
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
 }) {
+  const selectedModel =
+    chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
+
   return (
-    <span className="flex h-7 items-center rounded-lg px-2 text-[12px] font-medium text-muted-foreground select-none">
-      Lio 1.0
-    </span>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground select-none"
+          data-testid="model-selector"
+          type="button"
+        >
+          {selectedModel.name}
+          <svg
+            className="size-3 opacity-60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[160px]" side="top">
+        {chatModels.map((model) => (
+          <DropdownMenuItem
+            key={model.id}
+            className="flex flex-col items-start gap-0.5 py-2"
+            onSelect={() => onModelChange?.(model.id)}
+          >
+            <span className="text-[13px] font-medium">{model.name}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {model.description}
+            </span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

@@ -29,14 +29,20 @@ export const chatModels: ChatModel[] = [
     provider: "lio",
     description: "Lio 1.0 by PeytOtoria",
   },
+  {
+    id: "lio-2",
+    name: "Lio 2.1",
+    provider: "lio",
+    description: "Lio 2.1 by PeytOtoria — faster and smarter",
+  },
 ];
 
 export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>
 > {
-  // Lio 1.0 supports tools
   return {
     "lio-1": { tools: true, vision: false, reasoning: false },
+    "lio-2": { tools: true, vision: false, reasoning: false },
   };
 }
 

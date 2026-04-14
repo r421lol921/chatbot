@@ -27,12 +27,18 @@ export const myProvider = isTestEnvironment
     })()
   : null;
 
-export function getLanguageModel(_modelId: string) {
+const MODEL_MAP: Record<string, string> = {
+  "lio-1": "openai/gpt-oss-120b:free",
+  "lio-2": "qwen/qwen3-next-80b-a3b-instruct:free",
+};
+
+export function getLanguageModel(modelId: string) {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("chat-model");
   }
 
-  return openrouter("openai/gpt-oss-120b:free");
+  const openRouterModel = MODEL_MAP[modelId] ?? MODEL_MAP["lio-1"];
+  return openrouter(openRouterModel);
 }
 
 export function getTitleModel() {
