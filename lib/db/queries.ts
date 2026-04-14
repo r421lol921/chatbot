@@ -12,8 +12,8 @@ import {
   lt,
   type SQL,
 } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { sql } from "@vercel/postgres";
+import { drizzle } from "drizzle-orm/vercel-postgres";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
@@ -36,14 +36,7 @@ import {
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
-const connectionString =
-  process.env.POSTGRES_URL_NON_POOLING ??
-  process.env.DATABASE_URL ??
-  process.env.POSTGRES_URL ??
-  "";
-
-const client = postgres(connectionString, { max: 10 });
-export const db = drizzle(client);
+export const db = drizzle(sql);
 
 export async function getUser(email: string): Promise<User[]> {
   try {
