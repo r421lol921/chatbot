@@ -10,6 +10,7 @@ import {
   MessageActions as Actions,
 } from "../ai-elements/message";
 import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
+import { EmojiReactionButton } from "./emoji-reaction-button";
 
 export function PureMessageActions({
   chatId,
@@ -82,6 +83,13 @@ export function PureMessageActions({
       >
         <CopyIcon />
       </Action>
+
+      <EmojiReactionButton
+        chatId={chatId}
+        messageId={message.id}
+        reactions={[]}
+        isLoading={isLoading}
+      />
 
       <Action
         className="text-muted-foreground/50 hover:text-foreground"

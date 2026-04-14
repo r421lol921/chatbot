@@ -21,9 +21,12 @@ import { generateUUID } from "../utils";
 import {
   type Chat,
   chat,
+  chatMember,
+  chatShare,
   type DBMessage,
   document,
   message,
+  reaction,
   type Suggestion,
   stream,
   suggestion,
@@ -616,20 +619,101 @@ export async function createStreamId({
   }
 }
 
-export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
+export async function addMessageReaction({
+  messageId,
+  userId,
+  emoji,
+}: {
+  messageId: string;
+  userId: string;
+  emoji: string;
+}) {
   try {
-    const streamIds = await db
-      .select({ id: stream.id })
-      .from(stream)
-      .where(eq(stream.chatId, chatId))
-      .orderBy(asc(stream.createdAt))
-      .execute();
-
-    return streamIds.map(({ id }) => id);
+    return await db.insert(reaction).values({
+      messageId,
+      userId,
+      emoji,
+      createdAt: new Date(),
+    });
   } catch (_error) {
     throw new ChatbotError(
       "bad_request:database",
-      "Failed to get stream ids by chat id"
+      "Failed to add message reaction"
+    );
+  }
+}
+
+export async function createChatShare({
+  chatId,
+  shareToken,
+}: {
+  chatId: string;
+  shareToken: string;
+}) {
+  try {
+    return await db.insert(chatShare).values({
+      chatId,
+      shareToken,
+      createdAt: new Date(),
+    });
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to create chat share"
+    );
+  }
+}
+
+export async function getChatShareByToken({ shareToken }: { shareToken: string }) {
+  try {
+    const [share] = await db
+      .select()
+      .from(chatShare)
+      .where(eq(chatShare.shareToken, shareToken));
+    return share || null;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get chat share"
+    );
+  }
+}
+
+export async function addChatMember({
+  chatId,
+  userId,
+  email,
+}: {
+  chatId: string;
+  userId?: string;
+  email: string;
+}) {
+  try {
+    return await db.insert(chatMember).values({
+      chatId,
+      userId,
+      email,
+      joinedAt: new Date(),
+    });
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to add chat member"
+    );
+  }
+}
+
+export async function getChatMembers({ chatId }: { chatId: string }) {
+  try {
+    return await db
+      .select()
+      .from(chatMember)
+      .where(eq(chatMember.chatId, chatId))
+      .orderBy(asc(chatMember.joinedAt));
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get chat members"
     );
   }
 }
