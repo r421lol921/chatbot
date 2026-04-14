@@ -37,7 +37,7 @@ import {
 import { generateHashedPassword } from "./utils";
 
 const client = postgres(process.env.POSTGRES_URL ?? "", {
-  ssl: process.env.NODE_ENV === "production" ? "require" : false,
+  ssl: "require",
   max: 10,
 });
 const db = drizzle(client);
