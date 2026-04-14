@@ -293,7 +293,6 @@ export async function POST(request: Request) {
         }
       },
       onError: (error) => {
-        console.error("[v0] Stream error in chat route:", error);
         if (error instanceof ChatbotError) {
           return error.message;
         }
