@@ -2,9 +2,17 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { customProvider } from "ai";
 import { isTestEnvironment } from "../constants";
 
+if (!process.env.OPENROUTER_API_KEY) {
+  console.warn("[v0] OPENROUTER_API_KEY is not set — AI responses will fail.");
+}
+
 const openrouter = createOpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY ?? "",
+  headers: {
+    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000",
+    "X-Title": "PeytOtoria",
+  },
 });
 
 export const myProvider = isTestEnvironment
@@ -19,12 +27,18 @@ export const myProvider = isTestEnvironment
     })()
   : null;
 
-export function getLanguageModel(_modelId: string) {
+const MODEL_MAP: Record<string, string> = {
+  "lio-1": "openai/gpt-oss-120b:free",
+  "lio-2": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+};
+
+export function getLanguageModel(modelId: string) {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("chat-model");
   }
 
-  return openrouter("openai/gpt-oss-120b:free");
+  const openRouterModel = MODEL_MAP[modelId] ?? MODEL_MAP["lio-1"];
+  return openrouter(openRouterModel);
 }
 
 export function getTitleModel() {

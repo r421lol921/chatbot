@@ -19,8 +19,15 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
+import { chatModels } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   PromptInput,
   PromptInputFooter,
@@ -227,60 +234,90 @@ function PureMultimodalInput({
     chatId,
   ]);
 
-  const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
+  const uploadFile = useCallback(
+    async (file: File): Promise<Attachment | { textContent: string; name: string } | undefined> => {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-      if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+
+        if (!response.ok) {
+          toast.error(data.error ?? "Failed to upload file");
+          return undefined;
+        }
+
+        // Text files return their content directly
+        if (data.textContent !== undefined) {
+          return { textContent: data.textContent, name: data.name };
+        }
 
         return {
-          url,
-          name: pathname,
-          contentType,
+          url: data.url,
+          name: data.name,
+          contentType: data.contentType,
         };
+      } catch (_error) {
+        toast.error("Failed to upload file, please try again!");
+        return undefined;
       }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
-    }
-  }, []);
+    },
+    []
+  );
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
       setUploadQueue(files.map((file) => file.name));
 
       try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
-        );
+        const results = await Promise.all(files.map((file) => uploadFile(file)));
 
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
+        const imageAttachments: Attachment[] = [];
+        const textParts: string[] = [];
+
+        for (const result of results) {
+          if (!result) continue;
+          if ("textContent" in result) {
+            textParts.push(
+              `--- File: ${result.name} ---\n${result.textContent}\n--- End of file ---`
+            );
+          } else {
+            imageAttachments.push(result as Attachment);
+          }
+        }
+
+        if (imageAttachments.length > 0) {
+          setAttachments((current) => [...current, ...imageAttachments]);
+        }
+
+        if (textParts.length > 0) {
+          const textToAppend = textParts.join("\n\n");
+          setInput((current) =>
+            current ? `${current}\n\n${textToAppend}` : textToAppend
+          );
+          toast.success(
+            `${textParts.length} text file${textParts.length > 1 ? "s" : ""} added to message`
+          );
+        }
       } catch (_error) {
         toast.error("Failed to upload files");
       } finally {
         setUploadQueue([]);
+        if (event.target) event.target.value = "";
       }
     },
-    [setAttachments, uploadFile]
+    [setAttachments, setInput, uploadFile]
   );
 
   const handlePaste = useCallback(
@@ -370,6 +407,7 @@ function PureMultimodalInput({
         )}
 
       <input
+        accept="image/jpeg,image/png,image/gif,image/webp,text/plain,text/markdown,.txt,.md,.csv,.log"
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
@@ -561,23 +599,16 @@ function PureAttachmentsButton({
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers<ChatMessage>["status"];
 }) {
-  // Lio 1.0 does not support vision/file attachments
-  const hasVision = false;
-
   return (
     <Button
-      className={cn(
-        "h-7 w-7 rounded-lg border border-border/40 p-1 transition-colors",
-        hasVision
-          ? "text-foreground hover:border-border hover:text-foreground"
-          : "text-muted-foreground/30 cursor-not-allowed"
-      )}
+      className="h-7 w-7 rounded-lg border border-border/40 p-1 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
       data-testid="attachments-button"
-      disabled={status !== "ready" || !hasVision}
+      disabled={status !== "ready"}
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
       }}
+      title="Attach images or text files"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
@@ -588,16 +619,50 @@ function PureAttachmentsButton({
 const AttachmentsButton = memo(PureAttachmentsButton);
 
 function PureModelSelectorCompact({
-  selectedModelId: _selectedModelId,
-  onModelChange: _onModelChange,
+  selectedModelId,
+  onModelChange,
 }: {
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
 }) {
+  const selectedModel =
+    chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
+
   return (
-    <span className="flex h-7 items-center rounded-lg px-2 text-[12px] font-medium text-muted-foreground select-none">
-      Lio 1.0
-    </span>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground select-none"
+          data-testid="model-selector"
+          type="button"
+        >
+          {selectedModel.name}
+          <svg
+            className="size-3 opacity-60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[160px]" side="top">
+        {chatModels.map((model) => (
+          <DropdownMenuItem
+            key={model.id}
+            className="flex flex-col items-start gap-0.5 py-2"
+            onSelect={() => onModelChange?.(model.id)}
+          >
+            <span className="text-[13px] font-medium">{model.name}</span>
+            <span className="text-[11px] text-muted-foreground">
+              {model.description}
+            </span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

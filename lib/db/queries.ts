@@ -40,7 +40,7 @@ const client = postgres(process.env.POSTGRES_URL ?? "", {
   ssl: "require",
   max: 10,
 });
-const db = drizzle(client);
+export const db = drizzle(client);
 
 export async function getUser(email: string): Promise<User[]> {
   try {

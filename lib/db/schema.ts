@@ -171,3 +171,17 @@ export const chatMember = pgTable("ChatMember", {
 });
 
 export type ChatMember = InferSelectModel<typeof chatMember>;
+
+export const userIntegration = pgTable("UserIntegration", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .unique()
+    .references(() => user.id),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type UserIntegration = InferSelectModel<typeof userIntegration>;
