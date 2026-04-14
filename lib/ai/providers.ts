@@ -1,3 +1,8 @@
+import type {
+  LanguageModelV2,
+  LanguageModelV2CallOptions,
+  LanguageModelV2StreamPart,
+} from "@ai-sdk/provider";
 import { customProvider, simulateReadableStream } from "ai";
 import { isTestEnvironment } from "../constants";
 
@@ -6,26 +11,18 @@ if (!process.env.APIFREELLM_API_KEY) {
 }
 
 // ─── ApiFreeLLM free-tier custom language model ──────────────────────────────
-// The free tier does NOT support the OpenAI-compatible endpoint — only a simple
-// POST /api/v1/chat with a `message` field and a plain text `response` field.
+// The free tier uses POST /api/v1/chat with a `message` field and returns a
+// plain `response` string. No OpenAI-compatible endpoint is available on free.
 
-function createApiFreeLLMModel(systemPromptPrefix?: string) {
+function createApiFreeLLMModel(): LanguageModelV2 {
   return {
-    specificationVersion: "v1" as const,
+    specificationVersion: "v2" as const,
     provider: "apifreellm",
-    modelId: "apifreellm",
-    defaultObjectGenerationMode: undefined,
+    modelId: "apifreellm-free",
+    supportedUrls: {},
 
-    async doGenerate(options: {
-      prompt: Array<{ role: string; content: Array<{ type: string; text?: string }> | string }>;
-      system?: string;
-    }) {
-      const messages = options.prompt as Array<{
-        role: string;
-        content: Array<{ type: string; text?: string }> | string;
-      }>;
-
-      const fullMessage = buildMessage(messages, options.system ?? systemPromptPrefix);
+    async doGenerate(options: LanguageModelV2CallOptions) {
+      const fullMessage = buildMessage(options);
 
       const res = await fetch("https://apifreellm.com/api/v1/chat", {
         method: "POST",
@@ -47,24 +44,16 @@ function createApiFreeLLMModel(systemPromptPrefix?: string) {
       }
 
       return {
-        text: json.response,
+        content: [{ type: "text" as const, text: json.response }],
         finishReason: "stop" as const,
-        usage: { promptTokens: 0, completionTokens: 0 },
-        rawCall: { rawPrompt: fullMessage, rawSettings: {} },
+        usage: { inputTokens: 0, outputTokens: 0 },
+        warnings: [],
       };
     },
 
-    async doStream(options: {
-      prompt: Array<{ role: string; content: Array<{ type: string; text?: string }> | string }>;
-      system?: string;
-    }) {
-      // Free tier has no streaming endpoint — simulate streaming from the full response
-      const messages = options.prompt as Array<{
-        role: string;
-        content: Array<{ type: string; text?: string }> | string;
-      }>;
-
-      const fullMessage = buildMessage(messages, options.system ?? systemPromptPrefix);
+    async doStream(options: LanguageModelV2CallOptions) {
+      // Free tier has no streaming — fetch full response then simulate streaming
+      const fullMessage = buildMessage(options);
 
       const res = await fetch("https://apifreellm.com/api/v1/chat", {
         method: "POST",
@@ -87,57 +76,58 @@ function createApiFreeLLMModel(systemPromptPrefix?: string) {
 
       const responseText = json.response;
 
-      // Chunk the text into ~4-char pieces to simulate streaming
-      const chunkSize = 4;
-      const chunks: string[] = [];
+      // Chunk into ~6-char pieces to simulate streaming
+      const chunkSize = 6;
+      const chunks: LanguageModelV2StreamPart[] = [];
       for (let i = 0; i < responseText.length; i += chunkSize) {
-        chunks.push(responseText.slice(i, i + chunkSize));
+        chunks.push({
+          type: "text-delta" as const,
+          textDelta: responseText.slice(i, i + chunkSize),
+        });
       }
+      chunks.push({
+        type: "finish" as const,
+        finishReason: "stop" as const,
+        usage: { inputTokens: 0, outputTokens: 0 },
+      });
 
       return {
         stream: simulateReadableStream({
-          chunks: [
-            ...chunks.map((chunk) => ({
-              type: "text-delta" as const,
-              textDelta: chunk,
-            })),
-            {
-              type: "finish" as const,
-              finishReason: "stop" as const,
-              usage: { promptTokens: 0, completionTokens: 0 },
-            },
-          ],
+          chunks,
           initialDelayInMs: 0,
-          chunkDelayInMs: 10,
-        }),
-        rawCall: { rawPrompt: fullMessage, rawSettings: {} },
+          chunkDelayInMs: 8,
+        }) as ReadableStream<LanguageModelV2StreamPart>,
       };
     },
   };
 }
 
-// Flatten an AI SDK prompt into a single message string for the simple API
-function buildMessage(
-  messages: Array<{ role: string; content: Array<{ type: string; text?: string }> | string }>,
-  systemPrompt?: string
-): string {
+// Flatten AI SDK v2 call options into a single string for the simple API
+function buildMessage(options: LanguageModelV2CallOptions): string {
   const parts: string[] = [];
 
-  if (systemPrompt) {
-    parts.push(`[System]: ${systemPrompt}`);
+  if (options.system) {
+    parts.push(`[System]: ${options.system}`);
   }
 
-  for (const msg of messages) {
-    const role = msg.role === "user" ? "User" : msg.role === "assistant" ? "Assistant" : msg.role;
+  for (const msg of options.prompt) {
+    const role =
+      msg.role === "user"
+        ? "User"
+        : msg.role === "assistant"
+          ? "Assistant"
+          : String(msg.role);
+
     let text = "";
-    if (typeof msg.content === "string") {
-      text = msg.content;
-    } else if (Array.isArray(msg.content)) {
+    if (Array.isArray(msg.content)) {
       text = msg.content
-        .filter((p) => p.type === "text" && p.text)
-        .map((p) => p.text ?? "")
+        .filter(
+          (p): p is { type: "text"; text: string } => p.type === "text",
+        )
+        .map((p) => p.text)
         .join(" ");
     }
+
     if (text.trim()) {
       parts.push(`[${role}]: ${text}`);
     }
