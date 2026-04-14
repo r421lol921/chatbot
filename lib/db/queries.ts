@@ -12,8 +12,8 @@ import {
   lt,
   type SQL,
 } from "drizzle-orm";
-import { sql } from "@vercel/postgres";
-import { drizzle } from "drizzle-orm/vercel-postgres";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
@@ -36,7 +36,12 @@ import {
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
-export const db = drizzle(sql);
+const sqlClient = neon(
+  process.env.DATABASE_URL ??
+    process.env.POSTGRES_URL ??
+    ""
+);
+export const db = drizzle(sqlClient);
 
 export async function getUser(email: string): Promise<User[]> {
   try {
@@ -69,7 +74,7 @@ export async function createGuestUser() {
       email: user.email,
     });
   } catch (error) {
-    console.error("[createGuestUser] DB error:", error);
+    console.error("[createGuestUser] error:", error);
     throw new ChatbotError(
       "bad_request:database",
       "Failed to create guest user"
