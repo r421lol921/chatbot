@@ -16,6 +16,7 @@ import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
 import { SparklesIcon } from "./icons";
+import { ActivityLabel } from "./activity-label";
 import { MapCard } from "./map-card";
 import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
@@ -222,6 +223,7 @@ const PurePreviewMessage = ({
 
     if (type === "tool-getMap") {
       const { toolCallId, state } = part;
+      const isActive = state === "input-available" || state === "input-streaming";
       if (state === "output-available" && part.output && !("error" in part.output)) {
         return (
           <div className="w-[min(100%,480px)]" key={toolCallId}>
@@ -230,13 +232,12 @@ const PurePreviewMessage = ({
         );
       }
       return (
-        <div className="w-[min(100%,480px)]" key={toolCallId}>
+        <div className="flex flex-col gap-1.5 w-[min(100%,480px)]" key={toolCallId}>
+          <ActivityLabel isActive={isActive} type="mapping" />
           <Tool className="w-full" defaultOpen>
             <ToolHeader state={state} type="tool-getMap" />
             <ToolContent>
-              {(state === "input-available" || state === "input-streaming") && (
-                <ToolInput input={part.input} />
-              )}
+              {isActive && <ToolInput input={part.input} />}
               {state === "output-available" && part.output && "error" in part.output && (
                 <div className="px-4 py-3 text-sm text-destructive">
                   {String((part.output as { error: string }).error)}
@@ -250,21 +251,22 @@ const PurePreviewMessage = ({
 
     if (type === "tool-searchProducts") {
       const { toolCallId, state } = part;
+      const isActive = state === "input-available" || state === "input-streaming";
       if (state === "output-available" && part.output && !("error" in part.output)) {
         return (
-          <div className="w-[min(100%,520px)]" key={toolCallId}>
+          <div className="flex flex-col gap-1.5 w-[min(100%,520px)]" key={toolCallId}>
+            <ActivityLabel isActive={false} type="searching" />
             <ProductList result={part.output as Parameters<typeof ProductList>[0]["result"]} />
           </div>
         );
       }
       return (
-        <div className="w-[min(100%,520px)]" key={toolCallId}>
+        <div className="flex flex-col gap-1.5 w-[min(100%,520px)]" key={toolCallId}>
+          <ActivityLabel isActive={isActive} type="searching" />
           <Tool className="w-full" defaultOpen>
             <ToolHeader state={state} type="tool-searchProducts" />
             <ToolContent>
-              {(state === "input-available" || state === "input-streaming") && (
-                <ToolInput input={part.input} />
-              )}
+              {isActive && <ToolInput input={part.input} />}
             </ToolContent>
           </Tool>
         </div>
@@ -272,7 +274,7 @@ const PurePreviewMessage = ({
     }
 
     if (type === "tool-createDocument") {
-      const { toolCallId } = part;
+      const { toolCallId, state } = part;
 
       if (part.output && "error" in part.output) {
         return (
@@ -285,17 +287,24 @@ const PurePreviewMessage = ({
         );
       }
 
+      // Determine the activity label type from the document kind
+      const docKind = part.output?.kind ?? (part as { input?: { kind?: string } }).input?.kind;
+      const activityType = docKind === "code" ? "coding" : docKind === "sheet" ? "analyzing" : "writing";
+      const isStreaming = state === "input-available" || state === "input-streaming";
+
       return (
-        <DocumentPreview
-          isReadonly={isReadonly}
-          key={toolCallId}
-          result={part.output}
-        />
+        <div className="flex flex-col gap-1.5" key={toolCallId}>
+          <ActivityLabel isActive={isStreaming} type={activityType} />
+          <DocumentPreview
+            isReadonly={isReadonly}
+            result={part.output}
+          />
+        </div>
       );
     }
 
     if (type === "tool-updateDocument") {
-      const { toolCallId } = part;
+      const { toolCallId, state } = part;
 
       if (part.output && "error" in part.output) {
         return (
@@ -308,8 +317,13 @@ const PurePreviewMessage = ({
         );
       }
 
+      const docKind = part.output?.kind ?? (part as { input?: { kind?: string } }).input?.kind;
+      const activityType = docKind === "code" ? "coding" : docKind === "sheet" ? "analyzing" : "writing";
+      const isStreaming = state === "input-available" || state === "input-streaming";
+
       return (
-        <div className="relative" key={toolCallId}>
+        <div className="relative flex flex-col gap-1.5" key={toolCallId}>
+          <ActivityLabel isActive={isStreaming} type={activityType} />
           <DocumentPreview
             args={{ ...part.output, isUpdate: true }}
             isReadonly={isReadonly}
