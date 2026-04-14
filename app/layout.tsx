@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   title: "PeytOtoria",
   description: "PeytOtoria - Chat with Lio, your AI assistant developed by PeytOtoria.com developers.",
   icons: {
-    icon: "/favicon.jpg",
-    shortcut: "/favicon.jpg",
-    apple: "/favicon.jpg",
+    icon: "/images/logo.png",
+    shortcut: "/images/logo.png",
+    apple: "/images/logo.png",
   },
 };
 
