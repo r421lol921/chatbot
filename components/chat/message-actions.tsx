@@ -10,7 +10,7 @@ import {
   MessageActions as Actions,
 } from "../ai-elements/message";
 import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
-import { EmojiReactionButton } from "./emoji-reaction-button";
+import { HeartReactionButton } from "./emoji-reaction-button";
 
 export function PureMessageActions({
   chatId,
@@ -84,10 +84,10 @@ export function PureMessageActions({
         <CopyIcon />
       </Action>
 
-      <EmojiReactionButton
+      <HeartReactionButton
         chatId={chatId}
         messageId={message.id}
-        reactions={[]}
+        isLiked={false}
         isLoading={isLoading}
       />
 

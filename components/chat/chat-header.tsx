@@ -32,7 +32,8 @@ function PureChatHeader({
         <PanelLeftIcon className="size-4" />
       </Button>
 
-      <span className="font-semibold text-sm md:hidden">Lio 1.0</span>
+      <img src="/images/logo.png" alt="PeytOtoria" className="size-6 rounded-full md:hidden" />
+      <span className="font-semibold text-sm md:hidden">PeytOtoria</span>
 
       {!isReadonly && (
         <VisibilitySelector
@@ -41,7 +42,8 @@ function PureChatHeader({
         />
       )}
 
-      <span className="ml-auto hidden font-semibold text-sm md:block">Lio 1.0</span>
+      <img src="/images/logo.png" alt="PeytOtoria" className="ml-auto hidden size-6 rounded-full md:block" />
+      <span className="hidden font-semibold text-sm md:block">PeytOtoria</span>
     </header>
   );
 }
