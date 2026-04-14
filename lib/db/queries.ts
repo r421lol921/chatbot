@@ -36,10 +36,13 @@ import {
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
-const client = postgres(process.env.POSTGRES_URL ?? "", {
-  ssl: "require",
-  max: 10,
-});
+const connectionString =
+  process.env.POSTGRES_URL_NON_POOLING ??
+  process.env.DATABASE_URL ??
+  process.env.POSTGRES_URL ??
+  "";
+
+const client = postgres(connectionString, { max: 10 });
 export const db = drizzle(client);
 
 export async function getUser(email: string): Promise<User[]> {
