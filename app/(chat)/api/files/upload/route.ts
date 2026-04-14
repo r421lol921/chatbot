@@ -4,14 +4,24 @@ import { z } from "zod";
 
 import { auth } from "@/app/(auth)/auth";
 
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+];
+
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
     .refine((file) => file.size <= 5 * 1024 * 1024, {
       message: "File size should be less than 5MB",
     })
-    .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
-      message: "File type should be JPEG or PNG",
+    .refine((file) => ALLOWED_TYPES.includes(file.type) || file.type === "", {
+      message: "Only images (JPEG, PNG, GIF, WebP) and text files (TXT, MD, CSV) are allowed",
     }),
 });
 
