@@ -232,12 +232,12 @@ const PurePreviewMessage = ({
       return (
         <div className="w-[min(100%,480px)]" key={toolCallId}>
           <Tool className="w-full" defaultOpen>
-            <ToolHeader state={state} type="tool-getMap" toolName="getMap" />
+            <ToolHeader state={state} type="tool-getMap" />
             <ToolContent>
               {(state === "input-available" || state === "input-streaming") && (
                 <ToolInput input={part.input} />
               )}
-              {state === "output-available" && "error" in (part.output ?? {}) && (
+              {state === "output-available" && part.output && "error" in part.output && (
                 <div className="px-4 py-3 text-sm text-destructive">
                   {String((part.output as { error: string }).error)}
                 </div>
@@ -260,7 +260,7 @@ const PurePreviewMessage = ({
       return (
         <div className="w-[min(100%,520px)]" key={toolCallId}>
           <Tool className="w-full" defaultOpen>
-            <ToolHeader state={state} type="tool-searchProducts" toolName="searchProducts" />
+            <ToolHeader state={state} type="tool-searchProducts" />
             <ToolContent>
               {(state === "input-available" || state === "input-streaming") && (
                 <ToolInput input={part.input} />
