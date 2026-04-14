@@ -20,6 +20,8 @@ export type ChatModel = {
   description: string;
   gatewayOrder?: string[];
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high";
+  locked?: boolean;
+  requiresPlus?: boolean;
 };
 
 export const chatModels: ChatModel[] = [
@@ -28,12 +30,15 @@ export const chatModels: ChatModel[] = [
     name: "Lio 1.0",
     provider: "lio",
     description: "Lio 1.0 by PeytOtoria",
+    locked: false,
   },
   {
     id: "lio-2",
     name: "Lio 2.1",
     provider: "lio",
     description: "Lio 2.1 by PeytOtoria — faster and smarter",
+    locked: true,
+    requiresPlus: true,
   },
 ];
 
@@ -42,7 +47,7 @@ export async function getCapabilities(): Promise<
 > {
   return {
     "lio-1": { tools: true, vision: false, reasoning: false },
-    "lio-2": { tools: true, vision: false, reasoning: false },
+    "lio-2": { tools: true, vision: true, reasoning: true },
   };
 }
 
@@ -64,3 +69,19 @@ export const modelsByProvider = chatModels.reduce(
   },
   {} as Record<string, ChatModel[]>
 );
+
+// PeytO Plus subscription info
+export const PEYTO_PLUS_INFO = {
+  name: "PeytO Plus",
+  price: "$5.00",
+  paymentMethod: "CashApp",
+  cashAppTag: "$itslucidpp",
+  benefits: [
+    "Unlock Lio 2.1 — our most advanced AI model",
+    "Faster response times",
+    "Enhanced reasoning capabilities",
+    "Vision and image understanding",
+    "Priority support",
+  ],
+  isOneTime: true,
+};

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CreditCardIcon,
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
@@ -95,7 +96,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 </Tooltip>
               </div>
               <div className="group-data-[collapsible=icon]:hidden">
-                <SidebarTrigger className="text-sidebar-foreground/60 transition-colors duration-150 hover:text-sidebar-foreground" />
+                <SidebarTrigger className="text-sidebar-foreground/60 transition-all duration-200 hover:text-sidebar-foreground hover:rotate-180" />
               </div>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -129,6 +130,18 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    tooltip="Plans"
+                  >
+                    <Link href="/plans" onClick={() => setOpenMobile(false)}>
+                      <CreditCardIcon className="size-4" />
+                      <span className="text-[13px]">Plans</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

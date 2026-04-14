@@ -600,6 +600,27 @@ export async function getMessageCountByUserId({
   }
 }
 
+export async function getLastUserMessageTime({
+  userId,
+}: {
+  userId: string;
+}): Promise<Date | null> {
+  try {
+    const [latest] = await db
+      .select({ createdAt: message.createdAt })
+      .from(message)
+      .innerJoin(chat, eq(message.chatId, chat.id))
+      .where(and(eq(chat.userId, userId), eq(message.role, "user")))
+      .orderBy(desc(message.createdAt))
+      .limit(1)
+      .execute();
+
+    return latest?.createdAt ?? null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 export async function createStreamId({
   streamId,
   chatId,

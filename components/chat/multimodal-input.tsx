@@ -19,9 +19,10 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
-import { chatModels } from "@/lib/ai/models";
+import { chatModels, PEYTO_PLUS_INFO } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { LockIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -347,8 +348,9 @@ function PureMultimodalInput({
 
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) =>
+          (attachment): attachment is Attachment =>
             attachment !== undefined &&
+            "url" in attachment &&
             attachment.url !== undefined &&
             attachment.contentType !== undefined
         );
@@ -627,42 +629,140 @@ function PureModelSelectorCompact({
 }) {
   const selectedModel =
     chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
+  const [showPlusModal, setShowPlusModal] = useState(false);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground select-none"
-          data-testid="model-selector"
-          type="button"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground select-none"
+            data-testid="model-selector"
+            type="button"
+          >
+            {selectedModel.name}
+            <svg
+              className="size-3 opacity-60"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[200px]" side="top">
+          {chatModels.map((model) => (
+            <DropdownMenuItem
+              key={model.id}
+              className={cn(
+                "flex items-center gap-2 py-2 group",
+                model.locked && "cursor-not-allowed opacity-70"
+              )}
+              onSelect={(e) => {
+                if (model.locked) {
+                  e.preventDefault();
+                  setShowPlusModal(true);
+                } else {
+                  onModelChange?.(model.id);
+                }
+              }}
+            >
+              <div className="flex flex-col items-start gap-0.5 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-medium">{model.name}</span>
+                  {model.locked && (
+                    <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                  )}
+                  {model.requiresPlus && (
+                    <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
+                      PLUS
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  {model.description}
+                </span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+          
+          {/* PeytO Plus upsell */}
+          <div className="border-t border-border/50 mt-1 pt-1">
+            <DropdownMenuItem
+              className="flex flex-col items-start gap-1 py-2 cursor-pointer"
+              onSelect={() => setShowPlusModal(true)}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-semibold plus-badge">
+                  Get PeytO Plus
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {PEYTO_PLUS_INFO.price} one-time
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                Unlock Lio 2.1 and premium features
+              </span>
+            </DropdownMenuItem>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* PeytO Plus Modal */}
+      {showPlusModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowPlusModal(false)}
         >
-          {selectedModel.name}
-          <svg
-            className="size-3 opacity-60"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
+          <div 
+            className="bg-card border border-border/60 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
           >
-            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[160px]" side="top">
-        {chatModels.map((model) => (
-          <DropdownMenuItem
-            key={model.id}
-            className="flex flex-col items-start gap-0.5 py-2"
-            onSelect={() => onModelChange?.(model.id)}
-          >
-            <span className="text-[13px] font-medium">{model.name}</span>
-            <span className="text-[11px] text-muted-foreground">
-              {model.description}
-            </span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold plus-badge">
+                {PEYTO_PLUS_INFO.name}
+              </h3>
+              <p className="text-2xl font-bold mt-2">{PEYTO_PLUS_INFO.price}</p>
+              <p className="text-sm text-muted-foreground">One-time payment</p>
+            </div>
+            
+            <ul className="space-y-2 mb-6">
+              {PEYTO_PLUS_INFO.benefits.map((benefit, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+            
+            <div className="bg-muted/50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-center mb-2">
+                Send <span className="font-bold">{PEYTO_PLUS_INFO.price}</span> to:
+              </p>
+              <p className="text-center font-mono text-lg font-bold plus-badge">
+                {PEYTO_PLUS_INFO.cashAppTag}
+              </p>
+              <p className="text-xs text-center text-muted-foreground mt-1">
+                on {PEYTO_PLUS_INFO.paymentMethod}
+              </p>
+            </div>
+            
+            <p className="text-xs text-center text-muted-foreground mb-4">
+              After payment, contact support with your CashApp receipt to activate your Plus membership.
+            </p>
+            
+            <button
+              className="w-full py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
+              onClick={() => setShowPlusModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
