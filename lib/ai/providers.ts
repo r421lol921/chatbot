@@ -2,14 +2,12 @@ import type { LanguageModel } from "ai";
 import { customProvider, simulateReadableStream } from "ai";
 import { isTestEnvironment } from "../constants";
 
-// Z.ai API — uses OpenAI-compatible endpoint
-// Free model: meta-llama/llama-3.3-70b-instruct:free (completely free on Z.ai)
-const Z_AI_BASE_URL = "https://api.zai.com/v1";
-const Z_AI_API_KEY = "7f9efab132334204a7a71954b0c8ecf8.OJ71uTZuAn7GgSKK";
+// Z.ai / Together.ai API configuration
+const Z_AI_API_KEY = process.env.Z_AI_API_KEY || "7f9efab132334204a7a71954b0c8ecf8.OJ71uTZuAn7GgSKK";
+const Z_AI_BASE_URL = process.env.Z_AI_API_URL || "https://api.together.xyz/v1";
 
-// Lio 1.0 uses llama-3.3-70b (free)
-// Lio 2.1 uses llama-3.3-70b as well, but with the smarter system prompt
-const Z_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+// Free model: meta-llama/llama-3.3-70b-instruct (completely free)
+const Z_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct";
 
 function createZAIModel(modelId: string): LanguageModel {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,12 +30,17 @@ function createZAIModel(modelId: string): LanguageModel {
           model: Z_FREE_MODEL,
           messages,
           stream: false,
+          temperature: 0.7,
+          top_p: 0.9,
+          top_k: 50,
+          repetition_penalty: 1.0,
+          max_tokens: 2048,
         }),
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Z.ai error ${res.status}: ${text}`);
+        const text = await res.text().catch(() => "");
+        throw new Error(`AI API error ${res.status}: ${text}`);
       }
 
       const json = (await res.json()) as any;
@@ -67,15 +70,20 @@ function createZAIModel(modelId: string): LanguageModel {
           model: Z_FREE_MODEL,
           messages,
           stream: true,
+          temperature: 0.7,
+          top_p: 0.9,
+          top_k: 50,
+          repetition_penalty: 1.0,
+          max_tokens: 2048,
         }),
       });
 
       if (!res.ok || !res.body) {
         const text = await res.text().catch(() => "");
-        throw new Error(`Z.ai stream error ${res.status}: ${text}`);
+        throw new Error(`AI API stream error ${res.status}: ${text}`);
       }
 
-      // Parse SSE stream from Z.ai into AI SDK stream parts
+      // Parse SSE stream into AI SDK stream parts
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       const chunks: any[] = [];
@@ -104,8 +112,8 @@ function createZAIModel(modelId: string): LanguageModel {
             }
           }
         }
-      } catch {
-        // stream ended
+      } finally {
+        reader.releaseLock();
       }
 
       chunks.push({
