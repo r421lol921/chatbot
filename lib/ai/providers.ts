@@ -2,9 +2,17 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { customProvider } from "ai";
 import { isTestEnvironment } from "../constants";
 
+if (!process.env.OPENROUTER_API_KEY) {
+  console.warn("[v0] OPENROUTER_API_KEY is not set — AI responses will fail.");
+}
+
 const openrouter = createOpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY ?? "",
+  headers: {
+    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000",
+    "X-Title": "PeytOtoria",
+  },
 });
 
 export const myProvider = isTestEnvironment
