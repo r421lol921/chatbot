@@ -976,14 +976,21 @@ export const EyeIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const ShareIcon = ({ size = 16 }: { size?: number }) => {
+export const ShareIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => {
   return (
     <svg
       height={size}
+      width={size}
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
-      width={size}
+      className={className}
     >
       <path
         clipRule="evenodd"
