@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CreditCardIcon,
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
@@ -74,10 +75,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <SidebarMenuButton
                   asChild
                   className="size-8 !px-0 items-center justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
-                  tooltip="Chatbot"
+                  tooltip="PeytOtoria"
                 >
                   <Link href="/" onClick={() => setOpenMobile(false)}>
-                    <MessageSquareIcon className="size-4 text-sidebar-foreground/50" />
+                    <img src="/images/logo.png" alt="PeytOtoria" className="size-6 rounded-full" />
                   </Link>
                 </SidebarMenuButton>
                 <Tooltip>
@@ -95,7 +96,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 </Tooltip>
               </div>
               <div className="group-data-[collapsible=icon]:hidden">
-                <SidebarTrigger className="text-sidebar-foreground/60 transition-colors duration-150 hover:text-sidebar-foreground" />
+                <SidebarTrigger className="text-sidebar-foreground/60 transition-all duration-200 hover:text-sidebar-foreground hover:rotate-180" />
               </div>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -129,13 +130,42 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    tooltip="Plans"
+                  >
+                    <Link href="/plans" onClick={() => setOpenMobile(false)}>
+                      <CreditCardIcon className="size-4" />
+                      <span className="text-[13px]">Plans</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarHistory user={user} />
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border pt-2 pb-3">
-          {user && <SidebarUserNav user={user} />}
+          {user ? (
+            <SidebarUserNav user={user} />
+          ) : (
+            <div className="flex flex-col gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
+              <Link
+                className="flex h-8 w-full items-center justify-center rounded-lg bg-foreground px-4 text-[13px] font-medium text-background transition-opacity hover:opacity-90"
+                href="/register"
+              >
+                Sign up for free
+              </Link>
+              <Link
+                className="flex h-8 w-full items-center justify-center rounded-lg text-[13px] text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
+                href="/login"
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>

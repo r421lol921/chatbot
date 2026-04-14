@@ -21,9 +21,12 @@ import { generateUUID } from "../utils";
 import {
   type Chat,
   chat,
+  chatMember,
+  chatShare,
   type DBMessage,
   document,
   message,
+  reaction,
   type Suggestion,
   stream,
   suggestion,
@@ -33,8 +36,11 @@ import {
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
-const client = postgres(process.env.POSTGRES_URL ?? "");
-const db = drizzle(client);
+const client = postgres(process.env.POSTGRES_URL ?? "", {
+  ssl: "require",
+  max: 10,
+});
+export const db = drizzle(client);
 
 export async function getUser(email: string): Promise<User[]> {
   try {
@@ -594,6 +600,27 @@ export async function getMessageCountByUserId({
   }
 }
 
+export async function getLastUserMessageTime({
+  userId,
+}: {
+  userId: string;
+}): Promise<Date | null> {
+  try {
+    const [latest] = await db
+      .select({ createdAt: message.createdAt })
+      .from(message)
+      .innerJoin(chat, eq(message.chatId, chat.id))
+      .where(and(eq(chat.userId, userId), eq(message.role, "user")))
+      .orderBy(desc(message.createdAt))
+      .limit(1)
+      .execute();
+
+    return latest?.createdAt ?? null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 export async function createStreamId({
   streamId,
   chatId,
@@ -613,20 +640,116 @@ export async function createStreamId({
   }
 }
 
-export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
+export async function addMessageReaction({
+  messageId,
+  userId,
+  emoji,
+}: {
+  messageId: string;
+  userId: string;
+  emoji: string;
+}) {
   try {
-    const streamIds = await db
-      .select({ id: stream.id })
-      .from(stream)
-      .where(eq(stream.chatId, chatId))
-      .orderBy(asc(stream.createdAt))
-      .execute();
-
-    return streamIds.map(({ id }) => id);
+    return await db.insert(reaction).values({
+      messageId,
+      userId,
+      emoji,
+      createdAt: new Date(),
+    });
   } catch (_error) {
     throw new ChatbotError(
       "bad_request:database",
-      "Failed to get stream ids by chat id"
+      "Failed to add message reaction"
+    );
+  }
+}
+
+export async function getReactionsByMessageId({ messageId }: { messageId: string }) {
+  try {
+    return await db
+      .select()
+      .from(reaction)
+      .where(eq(reaction.messageId, messageId))
+      .orderBy(asc(reaction.createdAt));
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get reactions by message id"
+    );
+  }
+}
+
+export async function createChatShare({
+  chatId,
+  shareToken,
+}: {
+  chatId: string;
+  shareToken: string;
+}) {
+  try {
+    return await db.insert(chatShare).values({
+      chatId,
+      shareToken,
+      createdAt: new Date(),
+    });
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to create chat share"
+    );
+  }
+}
+
+export async function getChatShareByToken({ shareToken }: { shareToken: string }) {
+  try {
+    const [share] = await db
+      .select()
+      .from(chatShare)
+      .where(eq(chatShare.shareToken, shareToken));
+    return share || null;
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get chat share"
+    );
+  }
+}
+
+export async function addChatMember({
+  chatId,
+  userId,
+  email,
+}: {
+  chatId: string;
+  userId?: string;
+  email: string;
+}) {
+  try {
+    return await db.insert(chatMember).values({
+      chatId,
+      userId,
+      email,
+      joinedAt: new Date(),
+    });
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to add chat member"
+    );
+  }
+}
+
+export async function getChatMembers({ chatId }: { chatId: string }) {
+  try {
+    return await db
+      .select()
+      .from(chatMember)
+      .where(eq(chatMember.chatId, chatId))
+      .orderBy(asc(chatMember.joinedAt));
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get chat members"
     );
   }
 }

@@ -3,13 +3,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
-import {
-  ArrowUpIcon,
-  BrainIcon,
-  EyeIcon,
-  LockIcon,
-  WrenchIcon,
-} from "lucide-react";
+import { ArrowUpIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -23,27 +17,18 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import useSWR from "swr";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
-import {
-  type ChatModel,
-  chatModels,
-  DEFAULT_CHAT_MODEL,
-  type ModelCapabilities,
-} from "@/lib/ai/models";
+
+import { chatModels, PEYTO_PLUS_INFO } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { LockIcon } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   PromptInput,
   PromptInputFooter,
@@ -61,12 +46,6 @@ import {
 } from "./slash-commands";
 import { SuggestedActions } from "./suggested-actions";
 import type { VisibilityType } from "./visibility-selector";
-
-function setCookie(name: string, value: string) {
-  const maxAge = 60 * 60 * 24 * 365;
-  // biome-ignore lint/suspicious/noDocumentCookie: needed for client-side cookie setting
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}`;
-}
 
 function PureMultimodalInput({
   chatId,
@@ -256,60 +235,90 @@ function PureMultimodalInput({
     chatId,
   ]);
 
-  const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
+  const uploadFile = useCallback(
+    async (file: File): Promise<Attachment | { textContent: string; name: string } | undefined> => {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-      if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+
+        if (!response.ok) {
+          toast.error(data.error ?? "Failed to upload file");
+          return undefined;
+        }
+
+        // Text files return their content directly
+        if (data.textContent !== undefined) {
+          return { textContent: data.textContent, name: data.name };
+        }
 
         return {
-          url,
-          name: pathname,
-          contentType,
+          url: data.url,
+          name: data.name,
+          contentType: data.contentType,
         };
+      } catch (_error) {
+        toast.error("Failed to upload file, please try again!");
+        return undefined;
       }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
-    }
-  }, []);
+    },
+    []
+  );
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
       setUploadQueue(files.map((file) => file.name));
 
       try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
-        );
+        const results = await Promise.all(files.map((file) => uploadFile(file)));
 
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
+        const imageAttachments: Attachment[] = [];
+        const textParts: string[] = [];
+
+        for (const result of results) {
+          if (!result) continue;
+          if ("textContent" in result) {
+            textParts.push(
+              `--- File: ${result.name} ---\n${result.textContent}\n--- End of file ---`
+            );
+          } else {
+            imageAttachments.push(result as Attachment);
+          }
+        }
+
+        if (imageAttachments.length > 0) {
+          setAttachments((current) => [...current, ...imageAttachments]);
+        }
+
+        if (textParts.length > 0) {
+          const textToAppend = textParts.join("\n\n");
+          setInput((current) =>
+            current ? `${current}\n\n${textToAppend}` : textToAppend
+          );
+          toast.success(
+            `${textParts.length} text file${textParts.length > 1 ? "s" : ""} added to message`
+          );
+        }
       } catch (_error) {
         toast.error("Failed to upload files");
       } finally {
         setUploadQueue([]);
+        if (event.target) event.target.value = "";
       }
     },
-    [setAttachments, uploadFile]
+    [setAttachments, setInput, uploadFile]
   );
 
   const handlePaste = useCallback(
@@ -339,8 +348,9 @@ function PureMultimodalInput({
 
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) =>
+          (attachment): attachment is Attachment =>
             attachment !== undefined &&
+            "url" in attachment &&
             attachment.url !== undefined &&
             attachment.contentType !== undefined
         );
@@ -399,6 +409,7 @@ function PureMultimodalInput({
         )}
 
       <input
+        accept="image/jpeg,image/png,image/gif,image/webp,text/plain,text/markdown,.txt,.md,.csv,.log"
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
@@ -519,7 +530,6 @@ function PureMultimodalInput({
           <PromptInputTools>
             <AttachmentsButton
               fileInputRef={fileInputRef}
-              selectedModelId={selectedModelId}
               status={status}
             />
             <ModelSelectorCompact
@@ -587,36 +597,20 @@ export const MultimodalInput = memo(
 function PureAttachmentsButton({
   fileInputRef,
   status,
-  selectedModelId,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers<ChatMessage>["status"];
-  selectedModelId: string;
 }) {
-  const { data: modelsResponse } = useSWR(
-    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
-    (url: string) => fetch(url).then((r) => r.json()),
-    { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
-  );
-
-  const caps: Record<string, ModelCapabilities> | undefined =
-    modelsResponse?.capabilities ?? modelsResponse;
-  const hasVision = caps?.[selectedModelId]?.vision ?? false;
-
   return (
     <Button
-      className={cn(
-        "h-7 w-7 rounded-lg border border-border/40 p-1 transition-colors",
-        hasVision
-          ? "text-foreground hover:border-border hover:text-foreground"
-          : "text-muted-foreground/30 cursor-not-allowed"
-      )}
+      className="h-7 w-7 rounded-lg border border-border/40 p-1 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
       data-testid="attachments-button"
-      disabled={status !== "ready" || !hasVision}
+      disabled={status !== "ready"}
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
       }}
+      title="Attach images or text files"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
@@ -633,159 +627,142 @@ function PureModelSelectorCompact({
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const { data: modelsData } = useSWR(
-    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
-    (url: string) => fetch(url).then((r) => r.json()),
-    { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
-  );
-
-  const capabilities: Record<string, ModelCapabilities> | undefined =
-    modelsData?.capabilities ?? modelsData;
-  const dynamicModels: ChatModel[] | undefined = modelsData?.models;
-  const activeModels = dynamicModels ?? chatModels;
-
   const selectedModel =
-    activeModels.find((m: ChatModel) => m.id === selectedModelId) ??
-    activeModels.find((m: ChatModel) => m.id === DEFAULT_CHAT_MODEL) ??
-    activeModels[0];
-  const [provider] = selectedModel.id.split("/");
+    chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
+  const [showPlusModal, setShowPlusModal] = useState(false);
 
   return (
-    <ModelSelector onOpenChange={setOpen} open={open}>
-      <ModelSelectorTrigger asChild>
-        <Button
-          className="h-7 max-w-[200px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
-          data-testid="model-selector"
-          variant="ghost"
-        >
-          {provider && <ModelSelectorLogo provider={provider} />}
-          <ModelSelectorName>{selectedModel.name}</ModelSelectorName>
-        </Button>
-      </ModelSelectorTrigger>
-      <ModelSelectorContent>
-        <ModelSelectorInput placeholder="Search models..." />
-        <ModelSelectorList>
-          {(() => {
-            const curatedIds = new Set(chatModels.map((m) => m.id));
-            const allModels = dynamicModels
-              ? [
-                  ...chatModels,
-                  ...dynamicModels.filter((m) => !curatedIds.has(m.id)),
-                ]
-              : chatModels;
-
-            const grouped: Record<
-              string,
-              { model: ChatModel; curated: boolean }[]
-            > = {};
-            for (const model of allModels) {
-              const key = curatedIds.has(model.id)
-                ? "_available"
-                : model.provider;
-              if (!grouped[key]) {
-                grouped[key] = [];
-              }
-              grouped[key].push({ model, curated: curatedIds.has(model.id) });
-            }
-
-            const sortedKeys = Object.keys(grouped).sort((a, b) => {
-              if (a === "_available") {
-                return -1;
-              }
-              if (b === "_available") {
-                return 1;
-              }
-              return a.localeCompare(b);
-            });
-
-            const providerNames: Record<string, string> = {
-              alibaba: "Alibaba",
-              anthropic: "Anthropic",
-              "arcee-ai": "Arcee AI",
-              bytedance: "ByteDance",
-              cohere: "Cohere",
-              deepseek: "DeepSeek",
-              google: "Google",
-              inception: "Inception",
-              kwaipilot: "Kwaipilot",
-              meituan: "Meituan",
-              meta: "Meta",
-              minimax: "MiniMax",
-              mistral: "Mistral",
-              moonshotai: "Moonshot",
-              morph: "Morph",
-              nvidia: "Nvidia",
-              openai: "OpenAI",
-              perplexity: "Perplexity",
-              "prime-intellect": "Prime Intellect",
-              xiaomi: "Xiaomi",
-              xai: "xAI",
-              zai: "Zai",
-            };
-
-            return sortedKeys.map((key) => (
-              <ModelSelectorGroup
-                heading={
-                  key === "_available"
-                    ? "Available"
-                    : (providerNames[key] ?? key)
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground select-none"
+            data-testid="model-selector"
+            type="button"
+          >
+            {selectedModel.name}
+            <svg
+              className="size-3 opacity-60"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[200px]" side="top">
+          {chatModels.map((model) => (
+            <DropdownMenuItem
+              key={model.id}
+              className={cn(
+                "flex items-center gap-2 py-2 group",
+                model.locked && "cursor-not-allowed opacity-70"
+              )}
+              onSelect={(e) => {
+                if (model.locked) {
+                  e.preventDefault();
+                  setShowPlusModal(true);
+                } else {
+                  onModelChange?.(model.id);
                 }
-                key={key}
-              >
-                {grouped[key].map(({ model, curated }) => {
-                  const logoProvider = model.id.split("/")[0];
-                  return (
-                    <ModelSelectorItem
-                      className={cn(
-                        "flex w-full",
-                        model.id === selectedModel.id &&
-                          "border-b border-dashed border-foreground/50",
-                        !curated && "opacity-40 cursor-default"
-                      )}
-                      key={model.id}
-                      onSelect={() => {
-                        if (!curated) {
-                          return;
-                        }
-                        onModelChange?.(model.id);
-                        setCookie("chat-model", model.id);
-                        setOpen(false);
-                        setTimeout(() => {
-                          document
-                            .querySelector<HTMLTextAreaElement>(
-                              "[data-testid='multimodal-input']"
-                            )
-                            ?.focus();
-                        }, 50);
-                      }}
-                      value={model.id}
-                    >
-                      <ModelSelectorLogo provider={logoProvider} />
-                      <ModelSelectorName>{model.name}</ModelSelectorName>
-                      <div className="ml-auto flex items-center gap-2 text-foreground/70">
-                        {capabilities?.[model.id]?.tools && (
-                          <WrenchIcon className="size-3.5" />
-                        )}
-                        {capabilities?.[model.id]?.vision && (
-                          <EyeIcon className="size-3.5" />
-                        )}
-                        {capabilities?.[model.id]?.reasoning && (
-                          <BrainIcon className="size-3.5" />
-                        )}
-                        {!curated && (
-                          <LockIcon className="size-3 text-muted-foreground/50" />
-                        )}
-                      </div>
-                    </ModelSelectorItem>
-                  );
-                })}
-              </ModelSelectorGroup>
-            ));
-          })()}
-        </ModelSelectorList>
-      </ModelSelectorContent>
-    </ModelSelector>
+              }}
+            >
+              <div className="flex flex-col items-start gap-0.5 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-medium">{model.name}</span>
+                  {model.locked && (
+                    <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                  )}
+                  {model.requiresPlus && (
+                    <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
+                      PLUS
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  {model.description}
+                </span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+          
+          {/* PeytO Plus upsell */}
+          <div className="border-t border-border/50 mt-1 pt-1">
+            <DropdownMenuItem
+              className="flex flex-col items-start gap-1 py-2 cursor-pointer"
+              onSelect={() => setShowPlusModal(true)}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-[12px] font-semibold plus-badge">
+                  Get PeytO Plus
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {PEYTO_PLUS_INFO.price} one-time
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                Unlock Lio 2.1 and premium features
+              </span>
+            </DropdownMenuItem>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* PeytO Plus Modal */}
+      {showPlusModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowPlusModal(false)}
+        >
+          <div 
+            className="bg-card border border-border/60 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold plus-badge">
+                {PEYTO_PLUS_INFO.name}
+              </h3>
+              <p className="text-2xl font-bold mt-2">{PEYTO_PLUS_INFO.price}</p>
+              <p className="text-sm text-muted-foreground">One-time payment</p>
+            </div>
+            
+            <ul className="space-y-2 mb-6">
+              {PEYTO_PLUS_INFO.benefits.map((benefit, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>{benefit}</span>
+                </li>
+              ))}
+            </ul>
+            
+            <div className="bg-muted/50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-center mb-2">
+                Send <span className="font-bold">{PEYTO_PLUS_INFO.price}</span> to:
+              </p>
+              <p className="text-center font-mono text-lg font-bold plus-badge">
+                {PEYTO_PLUS_INFO.cashAppTag}
+              </p>
+              <p className="text-xs text-center text-muted-foreground mt-1">
+                on {PEYTO_PLUS_INFO.paymentMethod}
+              </p>
+            </div>
+            
+            <p className="text-xs text-center text-muted-foreground mb-4">
+              After payment, contact support with your CashApp receipt to activate your Plus membership.
+            </p>
+            
+            <button
+              className="w-full py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
+              onClick={() => setShowPlusModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

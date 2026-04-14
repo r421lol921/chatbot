@@ -785,13 +785,20 @@ export const SidebarLeftIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
-export const PlusIcon = ({ size = 16 }: { size?: number }) => (
+export const PlusIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => (
   <svg
     height={size}
+    width={size}
     strokeLinejoin="round"
     style={{ color: "currentcolor" }}
     viewBox="0 0 16 16"
-    width={size}
+    className={className}
   >
     <path
       clipRule="evenodd"
@@ -969,14 +976,21 @@ export const EyeIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const ShareIcon = ({ size = 16 }: { size?: number }) => {
+export const ShareIcon = ({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) => {
   return (
     <svg
       height={size}
+      width={size}
       strokeLinejoin="round"
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
-      width={size}
+      className={className}
     >
       <path
         clipRule="evenodd"
@@ -1211,3 +1225,15 @@ export const WarningIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const SmileIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    fill="currentColor"
+    height={size}
+    viewBox="0 0 16 16"
+    width={size}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8c0 3.59 2.91 6.5 6.5 6.5s6.5-2.91 6.5-6.5-2.91-6.5-6.5-6.5zm0 12c-3.03 0-5.5-2.47-5.5-5.5S4.97 2.5 8 2.5s5.5 2.47 5.5 5.5-2.47 5.5-5.5 5.5zm2-7c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1zm-4 0c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1zm2 3.5c1.33 0 2.61.63 3.4 1.68.27.36.23.89-.12 1.16-.35.27-.88.23-1.16-.12-.58-.76-1.47-1.22-2.42-1.22s-1.84.46-2.42 1.22c-.27.36-.81.39-1.16.12-.35-.27-.39-.81-.12-1.16.79-1.05 2.07-1.68 3.4-1.68z" />
+  </svg>
+);

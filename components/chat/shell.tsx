@@ -1,16 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useActiveChat } from "@/hooks/use-active-chat";
 import {
   initialArtifactData,
@@ -25,6 +15,7 @@ import { DataStreamHandler } from "./data-stream-handler";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
+import { RateLimitBanner } from "./rate-limit-banner";
 
 export function ChatShell() {
   const {
@@ -44,8 +35,6 @@ export function ChatShell() {
     votes,
     currentModelId,
     setCurrentModelId,
-    showCreditCardAlert,
-    setShowCreditCardAlert,
   } = useActiveChat();
 
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
@@ -107,7 +96,9 @@ export function ChatShell() {
               votes={votes}
             />
 
-            <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
+            <div className="sticky bottom-0 z-1 flex w-full flex-col gap-0 border-t-0 bg-background pt-1 pb-3 md:pb-4">
+              <RateLimitBanner />
+              <div className="mx-auto w-full max-w-4xl px-2 md:px-4">
               {!isReadonly && (
                 <MultimodalInput
                   attachments={attachments}
@@ -145,6 +136,7 @@ export function ChatShell() {
                   stop={stop}
                 />
               )}
+              </div>
             </div>
           </div>
         </div>
@@ -171,35 +163,7 @@ export function ChatShell() {
 
       <DataStreamHandler />
 
-      <AlertDialog
-        onOpenChange={setShowCreditCardAlert}
-        open={showCreditCardAlert}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Activate AI Gateway</AlertDialogTitle>
-            <AlertDialogDescription>
-              This application requires{" "}
-              {process.env.NODE_ENV === "production" ? "the owner" : "you"} to
-              activate Vercel AI Gateway.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                window.open(
-                  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card",
-                  "_blank"
-                );
-                window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/`;
-              }}
-            >
-              Activate
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </>
   );
 }

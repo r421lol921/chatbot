@@ -45,9 +45,9 @@ export default function Page() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Welcome back to Lio 1.0</h1>
       <p className="text-sm text-muted-foreground">
-        Sign in to your account to continue
+        Sign in to your account to continue chatting
       </p>
       <AuthForm action={handleSubmit} defaultEmail={email}>
         <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>

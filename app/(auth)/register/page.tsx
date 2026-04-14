@@ -47,8 +47,8 @@ export default function Page() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
-      <p className="text-sm text-muted-foreground">Get started for free</p>
+      <h1 className="text-2xl font-semibold tracking-tight">Create your Lio 1.0 account</h1>
+      <p className="text-sm text-muted-foreground">Get started for free — no credit card needed</p>
       <AuthForm action={handleSubmit} defaultEmail={email}>
         <SubmitButton isSuccessful={isSuccessful}>Sign up</SubmitButton>
         <p className="text-center text-[13px] text-muted-foreground">

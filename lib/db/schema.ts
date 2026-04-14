@@ -13,8 +13,8 @@ import {
 
 export const user = pgTable("User", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
-  email: varchar("email", { length: 64 }).notNull(),
-  password: varchar("password", { length: 64 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  password: varchar("password", { length: 256 }),
   name: text("name"),
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
@@ -134,3 +134,54 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const reaction = pgTable("MessageReaction", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  messageId: uuid("messageId")
+    .notNull()
+    .references(() => message.id),
+  userId: uuid("userId").references(() => user.id),
+  emoji: varchar("emoji", { length: 10 }).notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type MessageReaction = InferSelectModel<typeof reaction>;
+
+export const chatShare = pgTable("ChatShare", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  chatId: uuid("chatId")
+    .notNull()
+    .references(() => chat.id),
+  shareToken: varchar("shareToken", { length: 32 }).notNull().unique(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  expiresAt: timestamp("expiresAt"),
+});
+
+export type ChatShare = InferSelectModel<typeof chatShare>;
+
+export const chatMember = pgTable("ChatMember", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  chatId: uuid("chatId")
+    .notNull()
+    .references(() => chat.id),
+  userId: uuid("userId").references(() => user.id),
+  email: varchar("email", { length: 64 }),
+  role: varchar("role", { enum: ["member", "owner"] }).notNull().default("member"),
+  joinedAt: timestamp("joinedAt").notNull().defaultNow(),
+});
+
+export type ChatMember = InferSelectModel<typeof chatMember>;
+
+export const userIntegration = pgTable("UserIntegration", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .unique()
+    .references(() => user.id),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type UserIntegration = InferSelectModel<typeof userIntegration>;

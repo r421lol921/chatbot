@@ -22,14 +22,17 @@ import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
+import { getMap } from "@/lib/ai/tools/get-map";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
+import { searchProducts } from "@/lib/ai/tools/search-products";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
   getChatById,
+  getLastUserMessageTime,
   getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
@@ -87,14 +90,19 @@ export async function POST(request: Request) {
     await checkIpRateLimit(ipAddress(request));
 
     const userType: UserType = session.user.type;
+    const entitlements = entitlementsByUserType[userType];
 
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 1,
+    // Enforce per-interval message limit (1 message per 7h for basic, 5h for plus)
+    const lastMessageTime = await getLastUserMessageTime({
+      userId: session.user.id,
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerHour) {
-      return new ChatbotError("rate_limit:chat").toResponse();
+    if (lastMessageTime) {
+      const hoursSinceLastMessage =
+        (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastMessage < entitlements.messageIntervalHours) {
+        return new ChatbotError("rate_limit:chat").toResponse();
+      }
     }
 
     const isToolApprovalFlow = Boolean(messages);
@@ -193,7 +201,7 @@ export async function POST(request: Request) {
       execute: async ({ writer: dataStream }) => {
         const result = streamText({
           model: getLanguageModel(chatModel),
-          system: systemPrompt({ requestHints, supportsTools }),
+          system: systemPrompt({ requestHints, supportsTools, modelId: chatModel }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -201,21 +209,18 @@ export async function POST(request: Request) {
               ? []
               : [
                   "getWeather",
+                  "getMap",
+                  "searchProducts",
                   "createDocument",
                   "editDocument",
                   "updateDocument",
                   "requestSuggestions",
                 ],
-          providerOptions: {
-            ...(modelConfig?.gatewayOrder && {
-              gateway: { order: modelConfig.gatewayOrder },
-            }),
-            ...(modelConfig?.reasoningEffort && {
-              openai: { reasoningEffort: modelConfig.reasoningEffort },
-            }),
-          },
+          providerOptions: {},
           tools: {
             getWeather,
+            getMap,
+            searchProducts,
             createDocument: createDocument({
               session,
               dataStream,
@@ -288,15 +293,11 @@ export async function POST(request: Request) {
         }
       },
       onError: (error) => {
-        if (
-          error instanceof Error &&
-          error.message?.includes(
-            "AI Gateway requires a valid credit card on file to service requests"
-          )
-        ) {
-          return "AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.";
+        console.error("[v0] Stream error in chat route:", error);
+        if (error instanceof ChatbotError) {
+          return error.message;
         }
-        return "Oops, an error occurred!";
+        return "Something went wrong. Please try again.";
       },
     });
 
@@ -322,22 +323,11 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    const vercelId = request.headers.get("x-vercel-id");
-
     if (error instanceof ChatbotError) {
       return error.toResponse();
     }
 
-    if (
-      error instanceof Error &&
-      error.message?.includes(
-        "AI Gateway requires a valid credit card on file to service requests"
-      )
-    ) {
-      return new ChatbotError("bad_request:activate_gateway").toResponse();
-    }
-
-    console.error("Unhandled error in chat API:", error, { vercelId });
+    console.error("Unhandled error in chat API:", error);
     return new ChatbotError("offline:chat").toResponse();
   }
 }
