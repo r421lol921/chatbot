@@ -92,19 +92,6 @@ export async function POST(request: Request) {
     const userType: UserType = session.user.type;
     const entitlements = entitlementsByUserType[userType];
 
-    // Enforce per-interval message limit (1 message per 7h for basic, 5h for plus)
-    const lastMessageTime = await getLastUserMessageTime({
-      userId: session.user.id,
-    });
-
-    if (lastMessageTime) {
-      const hoursSinceLastMessage =
-        (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
-      if (hoursSinceLastMessage < entitlements.messageIntervalHours) {
-        return new ChatbotError("rate_limit:chat").toResponse();
-      }
-    }
-
     const isToolApprovalFlow = Boolean(messages);
 
     const chat = await getChatById({ id });
@@ -172,6 +159,21 @@ export async function POST(request: Request) {
       city,
       country,
     };
+
+    // Check rate limit BEFORE saving the message so the saved message
+    // doesn't immediately count against the user on the very same request.
+    if (!isToolApprovalFlow) {
+      const lastMessageTime = await getLastUserMessageTime({
+        userId: session.user.id,
+      });
+      if (lastMessageTime) {
+        const hoursSinceLastMessage =
+          (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastMessage < entitlements.messageIntervalHours) {
+          return new ChatbotError("rate_limit:chat").toResponse();
+        }
+      }
+    }
 
     if (message?.role === "user") {
       await saveMessages({
