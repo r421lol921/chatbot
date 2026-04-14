@@ -348,8 +348,9 @@ function PureMultimodalInput({
 
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) =>
+          (attachment): attachment is Attachment =>
             attachment !== undefined &&
+            "url" in attachment &&
             attachment.url !== undefined &&
             attachment.contentType !== undefined
         );
