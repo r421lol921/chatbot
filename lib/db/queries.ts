@@ -41,7 +41,10 @@ const connectionString =
   process.env.DATABASE_URL ??
   "";
 
-const sqlClient = postgres(connectionString, { ssl: "require" });
+// Supabase pooled URLs already include sslmode in the query string,
+// so we only add ssl:"require" for plain connection strings.
+const hasSslParam = connectionString.includes("sslmode=");
+const sqlClient = postgres(connectionString, hasSslParam ? {} : { ssl: "require" });
 export const db = drizzle(sqlClient);
 
 export async function getUser(email: string): Promise<User[]> {
