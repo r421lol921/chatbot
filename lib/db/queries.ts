@@ -643,6 +643,21 @@ export async function addMessageReaction({
   }
 }
 
+export async function getReactionsByMessageId({ messageId }: { messageId: string }) {
+  try {
+    return await db
+      .select()
+      .from(reaction)
+      .where(eq(reaction.messageId, messageId))
+      .orderBy(asc(reaction.createdAt));
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to get reactions by message id"
+    );
+  }
+}
+
 export async function createChatShare({
   chatId,
   shareToken,
