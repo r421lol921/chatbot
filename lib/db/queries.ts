@@ -72,7 +72,8 @@ export async function createGuestUser() {
       id: user.id,
       email: user.email,
     });
-  } catch (_error) {
+  } catch (error) {
+    console.error("[createGuestUser] DB error:", error);
     throw new ChatbotError(
       "bad_request:database",
       "Failed to create guest user"
