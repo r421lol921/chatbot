@@ -13,8 +13,8 @@ import {
 
 export const user = pgTable("User", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
-  email: varchar("email", { length: 64 }).notNull(),
-  password: varchar("password", { length: 64 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  password: varchar("password", { length: 256 }),
   name: text("name"),
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
