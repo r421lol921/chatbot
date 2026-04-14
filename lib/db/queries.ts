@@ -13,7 +13,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/neon-serverless";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
@@ -41,7 +41,7 @@ const sqlClient = neon(
     process.env.POSTGRES_URL ??
     ""
 );
-export const db = drizzle(sqlClient);
+export const db = drizzle({ client: sqlClient });
 
 export async function getUser(email: string): Promise<User[]> {
   try {
