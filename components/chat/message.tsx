@@ -16,9 +16,11 @@ import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
 import { SparklesIcon } from "./icons";
+import { MapCard } from "./map-card";
 import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
+import { ProductList } from "./product-list";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -211,6 +213,57 @@ const PurePreviewMessage = ({
                     Allow
                   </button>
                 </div>
+              )}
+            </ToolContent>
+          </Tool>
+        </div>
+      );
+    }
+
+    if (type === "tool-getMap") {
+      const { toolCallId, state } = part;
+      if (state === "output-available" && part.output && !("error" in part.output)) {
+        return (
+          <div className="w-[min(100%,480px)]" key={toolCallId}>
+            <MapCard mapData={part.output as Parameters<typeof MapCard>[0]["mapData"]} />
+          </div>
+        );
+      }
+      return (
+        <div className="w-[min(100%,480px)]" key={toolCallId}>
+          <Tool className="w-full" defaultOpen>
+            <ToolHeader state={state} type="tool-getMap" toolName="getMap" />
+            <ToolContent>
+              {(state === "input-available" || state === "input-streaming") && (
+                <ToolInput input={part.input} />
+              )}
+              {state === "output-available" && "error" in (part.output ?? {}) && (
+                <div className="px-4 py-3 text-sm text-destructive">
+                  {String((part.output as { error: string }).error)}
+                </div>
+              )}
+            </ToolContent>
+          </Tool>
+        </div>
+      );
+    }
+
+    if (type === "tool-searchProducts") {
+      const { toolCallId, state } = part;
+      if (state === "output-available" && part.output && !("error" in part.output)) {
+        return (
+          <div className="w-[min(100%,520px)]" key={toolCallId}>
+            <ProductList result={part.output as Parameters<typeof ProductList>[0]["result"]} />
+          </div>
+        );
+      }
+      return (
+        <div className="w-[min(100%,520px)]" key={toolCallId}>
+          <Tool className="w-full" defaultOpen>
+            <ToolHeader state={state} type="tool-searchProducts" toolName="searchProducts" />
+            <ToolContent>
+              {(state === "input-available" || state === "input-streaming") && (
+                <ToolInput input={part.input} />
               )}
             </ToolContent>
           </Tool>

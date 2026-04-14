@@ -22,8 +22,10 @@ import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
+import { getMap } from "@/lib/ai/tools/get-map";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
+import { searchProducts } from "@/lib/ai/tools/search-products";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
@@ -201,6 +203,8 @@ export async function POST(request: Request) {
               ? []
               : [
                   "getWeather",
+                  "getMap",
+                  "searchProducts",
                   "createDocument",
                   "editDocument",
                   "updateDocument",
@@ -209,6 +213,8 @@ export async function POST(request: Request) {
           providerOptions: {},
           tools: {
             getWeather,
+            getMap,
+            searchProducts,
             createDocument: createDocument({
               session,
               dataStream,
