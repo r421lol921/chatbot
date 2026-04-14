@@ -101,7 +101,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   }
 
                   if (isGuest) {
-                    router.push("/login");
+                    router.push("/register");
                   } else {
                     signOut({
                       redirectTo: "/",
@@ -110,7 +110,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                 }}
                 type="button"
               >
-                {isGuest ? "Login to your account" : "Sign out"}
+                {isGuest ? "Sign up for free" : "Sign out"}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

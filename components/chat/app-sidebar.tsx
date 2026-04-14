@@ -74,10 +74,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <SidebarMenuButton
                   asChild
                   className="size-8 !px-0 items-center justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
-                  tooltip="Chatbot"
+                  tooltip="PeytOtoria"
                 >
                   <Link href="/" onClick={() => setOpenMobile(false)}>
-                    <MessageSquareIcon className="size-4 text-sidebar-foreground/50" />
+                    <img src="/images/logo.png" alt="PeytOtoria" className="size-6 rounded-full" />
                   </Link>
                 </SidebarMenuButton>
                 <Tooltip>
@@ -135,7 +135,24 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           <SidebarHistory user={user} />
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border pt-2 pb-3">
-          {user && <SidebarUserNav user={user} />}
+          {user ? (
+            <SidebarUserNav user={user} />
+          ) : (
+            <div className="flex flex-col gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
+              <Link
+                className="flex h-8 w-full items-center justify-center rounded-lg bg-foreground px-4 text-[13px] font-medium text-background transition-opacity hover:opacity-90"
+                href="/register"
+              >
+                Sign up for free
+              </Link>
+              <Link
+                className="flex h-8 w-full items-center justify-center rounded-lg text-[13px] text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
+                href="/login"
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>

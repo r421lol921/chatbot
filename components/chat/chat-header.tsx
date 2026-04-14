@@ -1,11 +1,11 @@
 "use client";
 
-import { PanelLeftIcon } from "lucide-react";
-import Link from "next/link";
-import { memo } from "react";
+import { PanelLeftIcon, UsersIcon } from "lucide-react";
+import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSidebar } from "@/components/ui/sidebar";
-import { VercelIcon } from "./icons";
+import { GroupChatModal } from "./group-chat-modal";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
 
 function PureChatHeader({
@@ -18,6 +18,7 @@ function PureChatHeader({
   isReadonly: boolean;
 }) {
   const { state, toggleSidebar, isMobile } = useSidebar();
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
 
   if (state === "collapsed" && !isMobile) {
     return null;
@@ -34,14 +35,8 @@ function PureChatHeader({
         <PanelLeftIcon className="size-4" />
       </Button>
 
-      <Link
-        className="flex size-8 items-center justify-center rounded-lg md:hidden"
-        href="https://vercel.com/templates/next.js/chatbot"
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        <VercelIcon size={14} />
-      </Link>
+      <img src="/images/logo.png" alt="PeytOtoria" className="size-6 rounded-full md:hidden" />
+      <span className="font-semibold text-sm md:hidden">PeytOtoria</span>
 
       {!isReadonly && (
         <VisibilitySelector
@@ -50,19 +45,32 @@ function PureChatHeader({
         />
       )}
 
-      <Button
-        asChild
-        className="hidden rounded-lg bg-foreground px-4 text-background hover:bg-foreground/90 md:ml-auto md:flex"
-      >
-        <Link
-          href="https://vercel.com/templates/next.js/chatbot"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <VercelIcon size={16} />
-          Deploy with Vercel
-        </Link>
-      </Button>
+      <div className="ml-auto flex items-center gap-2">
+        {!isReadonly && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="size-7 rounded-lg border border-border/40 p-0 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+                onClick={() => setGroupModalOpen(true)}
+                size="icon"
+                variant="ghost"
+                aria-label="Invite to group chat"
+              >
+                <UsersIcon className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Invite to group chat</TooltipContent>
+          </Tooltip>
+        )}
+        <img src="/images/logo.png" alt="PeytOtoria" className="hidden size-6 rounded-full md:block" />
+        <span className="hidden font-semibold text-sm md:block">PeytOtoria</span>
+      </div>
+
+      <GroupChatModal
+        chatId={chatId}
+        isOpen={groupModalOpen}
+        onOpenChange={setGroupModalOpen}
+      />
     </header>
   );
 }

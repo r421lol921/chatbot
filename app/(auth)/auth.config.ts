@@ -5,6 +5,7 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 export const authConfig = {
   basePath: "/api/auth",
   trustHost: true,
+  secret: process.env.AUTH_SECRET,
   pages: {
     signIn: `${base}/login`,
     newUser: `${base}/`,
