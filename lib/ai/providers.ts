@@ -2,87 +2,112 @@ import type { LanguageModel } from "ai";
 import { customProvider, simulateReadableStream } from "ai";
 import { isTestEnvironment } from "../constants";
 
-if (!process.env.APIFREELLM_API_KEY) {
-  console.warn("[lio] APIFREELLM_API_KEY is not set — AI responses will fail.");
-}
+// Z.ai API — uses OpenAI-compatible endpoint
+// Free model: meta-llama/llama-3.3-70b-instruct:free (completely free on Z.ai)
+const Z_AI_BASE_URL = "https://api.zai.com/v1";
+const Z_AI_API_KEY = "7f9efab132334204a7a71954b0c8ecf8.OJ71uTZuAn7GgSKK";
 
-// ─── ApiFreeLLM free-tier custom language model ──────────────────────────────
-// The free tier uses POST /api/v1/chat with a plain `message` field.
-// We avoid importing from @ai-sdk/provider directly to prevent the dual-version
-// type conflict (3.0.3 vs 3.0.8 in pnpm). Using `LanguageModel` from "ai" and
-// casting internally resolves cleanly through the single ai-package re-export.
+// Lio 1.0 uses llama-3.3-70b (free)
+// Lio 2.1 uses llama-3.3-70b as well, but with the smarter system prompt
+const Z_FREE_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 
-function createApiFreeLLMModel(): LanguageModel {
+function createZAIModel(modelId: string): LanguageModel {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const model: any = {
     specificationVersion: "v2" as const,
-    provider: "apifreellm",
-    modelId: "apifreellm-free",
+    provider: "z-ai",
+    modelId,
     supportedUrls: {},
 
     async doGenerate(options: any) {
-      const fullMessage = buildMessage(options);
+      const messages = buildMessages(options);
 
-      const res = await fetch("https://apifreellm.com/api/v1/chat", {
+      const res = await fetch(`${Z_AI_BASE_URL}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.APIFREELLM_API_KEY ?? ""}`,
+          Authorization: `Bearer ${Z_AI_API_KEY}`,
         },
-        body: JSON.stringify({ message: fullMessage }),
+        body: JSON.stringify({
+          model: Z_FREE_MODEL,
+          messages,
+          stream: false,
+        }),
       });
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`ApiFreeLLM error ${res.status}: ${text}`);
+        throw new Error(`Z.ai error ${res.status}: ${text}`);
       }
 
-      const json = (await res.json()) as { success: boolean; response: string };
-      if (!json.success) {
-        throw new Error("ApiFreeLLM returned success:false");
-      }
+      const json = (await res.json()) as any;
+      const text = json.choices?.[0]?.message?.content ?? "";
 
       return {
-        content: [{ type: "text" as const, text: json.response }],
-        finishReason: "stop" as const,
-        usage: { inputTokens: 0, outputTokens: 0 },
+        content: [{ type: "text" as const, text }],
+        finishReason: (json.choices?.[0]?.finish_reason ?? "stop") as any,
+        usage: {
+          inputTokens: json.usage?.prompt_tokens ?? 0,
+          outputTokens: json.usage?.completion_tokens ?? 0,
+        },
         warnings: [],
       };
     },
 
     async doStream(options: any) {
-      // Free tier has no streaming — fetch full then simulate stream in chunks
-      const fullMessage = buildMessage(options);
+      const messages = buildMessages(options);
 
-      const res = await fetch("https://apifreellm.com/api/v1/chat", {
+      const res = await fetch(`${Z_AI_BASE_URL}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.APIFREELLM_API_KEY ?? ""}`,
+          Authorization: `Bearer ${Z_AI_API_KEY}`,
         },
-        body: JSON.stringify({ message: fullMessage }),
+        body: JSON.stringify({
+          model: Z_FREE_MODEL,
+          messages,
+          stream: true,
+        }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`ApiFreeLLM error ${res.status}: ${text}`);
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Z.ai stream error ${res.status}: ${text}`);
       }
 
-      const json = (await res.json()) as { success: boolean; response: string };
-      if (!json.success) {
-        throw new Error("ApiFreeLLM returned success:false");
-      }
-
-      const responseText = json.response;
-      const chunkSize = 6;
+      // Parse SSE stream from Z.ai into AI SDK stream parts
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
       const chunks: any[] = [];
+      let buffer = "";
 
-      for (let i = 0; i < responseText.length; i += chunkSize) {
-        chunks.push({
-          type: "text-delta" as const,
-          textDelta: responseText.slice(i, i + chunkSize),
-        });
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed === "data: [DONE]") continue;
+            if (!trimmed.startsWith("data: ")) continue;
+            try {
+              const parsed = JSON.parse(trimmed.slice(6)) as any;
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) {
+                chunks.push({ type: "text-delta" as const, textDelta: delta });
+              }
+            } catch {
+              // skip malformed SSE lines
+            }
+          }
+        }
+      } catch {
+        // stream ended
       }
+
       chunks.push({
         type: "finish" as const,
         finishReason: "stop" as const,
@@ -93,7 +118,7 @@ function createApiFreeLLMModel(): LanguageModel {
         stream: simulateReadableStream({
           chunks,
           initialDelayInMs: 0,
-          chunkDelayInMs: 8,
+          chunkDelayInMs: 0,
         }),
       };
     },
@@ -102,34 +127,27 @@ function createApiFreeLLMModel(): LanguageModel {
   return model as LanguageModel;
 }
 
-// Flatten AI SDK prompt messages into a single string for the simple free API
-function buildMessage(options: {
+// Convert AI SDK prompt format to OpenAI messages array
+function buildMessages(options: {
   system?: string;
   prompt: Array<{
     role: string;
     content: Array<{ type: string; text?: string }> | string;
   }>;
-}): string {
-  const parts: string[] = [];
+}): Array<{ role: string; content: string }> {
+  const messages: Array<{ role: string; content: string }> = [];
 
   if (options.system) {
-    parts.push(`[System]: ${options.system}`);
+    messages.push({ role: "system", content: options.system });
   }
 
   for (const msg of options.prompt) {
-    const role =
-      msg.role === "user"
-        ? "User"
-        : msg.role === "assistant"
-          ? "Assistant"
-          : String(msg.role);
-
     let text = "";
     if (Array.isArray(msg.content)) {
       text = msg.content
         .filter(
           (p): p is { type: "text"; text: string } =>
-            p.type === "text" && typeof p.text === "string",
+            p.type === "text" && typeof p.text === "string"
         )
         .map((p) => p.text)
         .join(" ");
@@ -138,11 +156,17 @@ function buildMessage(options: {
     }
 
     if (text.trim()) {
-      parts.push(`[${role}]: ${text}`);
+      const role =
+        msg.role === "user"
+          ? "user"
+          : msg.role === "assistant"
+            ? "assistant"
+            : "system";
+      messages.push({ role, content: text });
     }
   }
 
-  return parts.join("\n\n");
+  return messages;
 }
 
 // Mock provider for test environment
@@ -163,16 +187,16 @@ const mockProvider = isTestEnvironment
     })()
   : null;
 
-export function getLanguageModel(_modelId: string): LanguageModel {
+export function getLanguageModel(modelId: string): LanguageModel {
   if (isTestEnvironment && mockProvider) {
     return mockProvider.languageModel("chat-model");
   }
-  return createApiFreeLLMModel();
+  return createZAIModel(modelId);
 }
 
 export function getTitleModel(): LanguageModel {
   if (isTestEnvironment && mockProvider) {
     return mockProvider.languageModel("title-model");
   }
-  return createApiFreeLLMModel();
+  return createZAIModel("title");
 }

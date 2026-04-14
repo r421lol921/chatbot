@@ -676,7 +676,7 @@ function PureModelSelectorCompact({
                     <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
                   )}
                   {model.requiresPlus && (
-                    <span className="text-[9px] font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white px-1.5 py-0.5 rounded-full">
+                    <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
                       PLUS
                     </span>
                   )}
@@ -695,7 +695,7 @@ function PureModelSelectorCompact({
               onSelect={() => setShowPlusModal(true)}
             >
               <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-semibold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+                <span className="text-[12px] font-semibold plus-badge">
                   Get PeytO Plus
                 </span>
                 <span className="text-[10px] text-muted-foreground">
@@ -721,7 +721,7 @@ function PureModelSelectorCompact({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-4">
-              <h3 className="text-lg font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+              <h3 className="text-lg font-bold plus-badge">
                 {PEYTO_PLUS_INFO.name}
               </h3>
               <p className="text-2xl font-bold mt-2">{PEYTO_PLUS_INFO.price}</p>
@@ -741,7 +741,7 @@ function PureModelSelectorCompact({
               <p className="text-sm text-center mb-2">
                 Send <span className="font-bold">{PEYTO_PLUS_INFO.price}</span> to:
               </p>
-              <p className="text-center font-mono text-lg font-bold text-amber-500">
+              <p className="text-center font-mono text-lg font-bold plus-badge">
                 {PEYTO_PLUS_INFO.cashAppTag}
               </p>
               <p className="text-xs text-center text-muted-foreground mt-1">

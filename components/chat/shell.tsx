@@ -15,6 +15,7 @@ import { DataStreamHandler } from "./data-stream-handler";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
+import { RateLimitBanner } from "./rate-limit-banner";
 
 export function ChatShell() {
   const {
@@ -95,7 +96,9 @@ export function ChatShell() {
               votes={votes}
             />
 
-            <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
+            <div className="sticky bottom-0 z-1 flex w-full flex-col gap-0 border-t-0 bg-background pt-1 pb-3 md:pb-4">
+              <RateLimitBanner />
+              <div className="mx-auto w-full max-w-4xl px-2 md:px-4">
               {!isReadonly && (
                 <MultimodalInput
                   attachments={attachments}
@@ -133,6 +136,7 @@ export function ChatShell() {
                   stop={stop}
                 />
               )}
+              </div>
             </div>
           </div>
         </div>

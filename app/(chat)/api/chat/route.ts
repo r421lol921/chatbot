@@ -32,6 +32,7 @@ import {
   createStreamId,
   deleteChatById,
   getChatById,
+  getLastUserMessageTime,
   getMessageCountByUserId,
   getMessagesByChatId,
   saveChat,
@@ -89,14 +90,19 @@ export async function POST(request: Request) {
     await checkIpRateLimit(ipAddress(request));
 
     const userType: UserType = session.user.type;
+    const entitlements = entitlementsByUserType[userType];
 
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 1,
+    // Enforce per-interval message limit (1 message per 7h for basic, 5h for plus)
+    const lastMessageTime = await getLastUserMessageTime({
+      userId: session.user.id,
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerHour) {
-      return new ChatbotError("rate_limit:chat").toResponse();
+    if (lastMessageTime) {
+      const hoursSinceLastMessage =
+        (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastMessage < entitlements.messageIntervalHours) {
+        return new ChatbotError("rate_limit:chat").toResponse();
+      }
     }
 
     const isToolApprovalFlow = Boolean(messages);
