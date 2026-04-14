@@ -1,8 +1,4 @@
-import type {
-  LanguageModelV2,
-  LanguageModelV2CallOptions,
-  LanguageModelV2StreamPart,
-} from "@ai-sdk/provider";
+import type { LanguageModel } from "ai";
 import { customProvider, simulateReadableStream } from "ai";
 import { isTestEnvironment } from "../constants";
 
@@ -11,17 +7,20 @@ if (!process.env.APIFREELLM_API_KEY) {
 }
 
 // ─── ApiFreeLLM free-tier custom language model ──────────────────────────────
-// The free tier uses POST /api/v1/chat with a `message` field and returns a
-// plain `response` string. No OpenAI-compatible endpoint is available on free.
+// The free tier uses POST /api/v1/chat with a plain `message` field.
+// We avoid importing from @ai-sdk/provider directly to prevent the dual-version
+// type conflict (3.0.3 vs 3.0.8 in pnpm). Using `LanguageModel` from "ai" and
+// casting internally resolves cleanly through the single ai-package re-export.
 
-function createApiFreeLLMModel(): LanguageModelV2 {
-  return {
+function createApiFreeLLMModel(): LanguageModel {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const model: any = {
     specificationVersion: "v2" as const,
     provider: "apifreellm",
     modelId: "apifreellm-free",
     supportedUrls: {},
 
-    async doGenerate(options: LanguageModelV2CallOptions) {
+    async doGenerate(options: any) {
       const fullMessage = buildMessage(options);
 
       const res = await fetch("https://apifreellm.com/api/v1/chat", {
@@ -51,8 +50,8 @@ function createApiFreeLLMModel(): LanguageModelV2 {
       };
     },
 
-    async doStream(options: LanguageModelV2CallOptions) {
-      // Free tier has no streaming — fetch full response then simulate streaming
+    async doStream(options: any) {
+      // Free tier has no streaming — fetch full then simulate stream in chunks
       const fullMessage = buildMessage(options);
 
       const res = await fetch("https://apifreellm.com/api/v1/chat", {
@@ -75,10 +74,9 @@ function createApiFreeLLMModel(): LanguageModelV2 {
       }
 
       const responseText = json.response;
-
-      // Chunk into ~6-char pieces to simulate streaming
       const chunkSize = 6;
-      const chunks: LanguageModelV2StreamPart[] = [];
+      const chunks: any[] = [];
+
       for (let i = 0; i < responseText.length; i += chunkSize) {
         chunks.push({
           type: "text-delta" as const,
@@ -96,14 +94,22 @@ function createApiFreeLLMModel(): LanguageModelV2 {
           chunks,
           initialDelayInMs: 0,
           chunkDelayInMs: 8,
-        }) as ReadableStream<LanguageModelV2StreamPart>,
+        }),
       };
     },
   };
+
+  return model as LanguageModel;
 }
 
-// Flatten AI SDK v2 call options into a single string for the simple API
-function buildMessage(options: LanguageModelV2CallOptions): string {
+// Flatten AI SDK prompt messages into a single string for the simple free API
+function buildMessage(options: {
+  system?: string;
+  prompt: Array<{
+    role: string;
+    content: Array<{ type: string; text?: string }> | string;
+  }>;
+}): string {
   const parts: string[] = [];
 
   if (options.system) {
@@ -122,10 +128,13 @@ function buildMessage(options: LanguageModelV2CallOptions): string {
     if (Array.isArray(msg.content)) {
       text = msg.content
         .filter(
-          (p): p is { type: "text"; text: string } => p.type === "text",
+          (p): p is { type: "text"; text: string } =>
+            p.type === "text" && typeof p.text === "string",
         )
         .map((p) => p.text)
         .join(" ");
+    } else if (typeof msg.content === "string") {
+      text = msg.content;
     }
 
     if (text.trim()) {
@@ -154,14 +163,14 @@ const mockProvider = isTestEnvironment
     })()
   : null;
 
-export function getLanguageModel(_modelId: string) {
+export function getLanguageModel(_modelId: string): LanguageModel {
   if (isTestEnvironment && mockProvider) {
     return mockProvider.languageModel("chat-model");
   }
   return createApiFreeLLMModel();
 }
 
-export function getTitleModel() {
+export function getTitleModel(): LanguageModel {
   if (isTestEnvironment && mockProvider) {
     return mockProvider.languageModel("title-model");
   }
