@@ -29,7 +29,7 @@ export const myProvider = isTestEnvironment
 
 const MODEL_MAP: Record<string, string> = {
   "lio-1": "openai/gpt-oss-120b:free",
-  "lio-2": "qwen/qwen3-next-80b-a3b-instruct:free",
+  "lio-2": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
 };
 
 export function getLanguageModel(modelId: string) {

@@ -234,60 +234,90 @@ function PureMultimodalInput({
     chatId,
   ]);
 
-  const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
+  const uploadFile = useCallback(
+    async (file: File): Promise<Attachment | { textContent: string; name: string } | undefined> => {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-      if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+
+        if (!response.ok) {
+          toast.error(data.error ?? "Failed to upload file");
+          return undefined;
+        }
+
+        // Text files return their content directly
+        if (data.textContent !== undefined) {
+          return { textContent: data.textContent, name: data.name };
+        }
 
         return {
-          url,
-          name: pathname,
-          contentType,
+          url: data.url,
+          name: data.name,
+          contentType: data.contentType,
         };
+      } catch (_error) {
+        toast.error("Failed to upload file, please try again!");
+        return undefined;
       }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
-    }
-  }, []);
+    },
+    []
+  );
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
+      if (files.length === 0) return;
 
       setUploadQueue(files.map((file) => file.name));
 
       try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
-        );
+        const results = await Promise.all(files.map((file) => uploadFile(file)));
 
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
+        const imageAttachments: Attachment[] = [];
+        const textParts: string[] = [];
+
+        for (const result of results) {
+          if (!result) continue;
+          if ("textContent" in result) {
+            textParts.push(
+              `--- File: ${result.name} ---\n${result.textContent}\n--- End of file ---`
+            );
+          } else {
+            imageAttachments.push(result as Attachment);
+          }
+        }
+
+        if (imageAttachments.length > 0) {
+          setAttachments((current) => [...current, ...imageAttachments]);
+        }
+
+        if (textParts.length > 0) {
+          const textToAppend = textParts.join("\n\n");
+          setInput((current) =>
+            current ? `${current}\n\n${textToAppend}` : textToAppend
+          );
+          toast.success(
+            `${textParts.length} text file${textParts.length > 1 ? "s" : ""} added to message`
+          );
+        }
       } catch (_error) {
         toast.error("Failed to upload files");
       } finally {
         setUploadQueue([]);
+        if (event.target) event.target.value = "";
       }
     },
-    [setAttachments, uploadFile]
+    [setAttachments, setInput, uploadFile]
   );
 
   const handlePaste = useCallback(

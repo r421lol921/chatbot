@@ -1,75 +1,89 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
-import { z } from "zod";
-
 import { auth } from "@/app/(auth)/auth";
 
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-];
+const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
-const FileSchema = z.object({
-  file: z
-    .instanceof(Blob)
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
-      message: "File size should be less than 5MB",
-    })
-    .refine((file) => ALLOWED_TYPES.includes(file.type) || file.type === "", {
-      message: "Only images (JPEG, PNG, GIF, WebP) and text files (TXT, MD, CSV) are allowed",
-    }),
-});
+function isTextFile(file: File): boolean {
+  return (
+    file.type.startsWith("text/") ||
+    file.name.endsWith(".txt") ||
+    file.name.endsWith(".md") ||
+    file.name.endsWith(".csv") ||
+    file.name.endsWith(".log")
+  );
+}
+
+function isImageFile(file: File): boolean {
+  return (
+    file.type === "image/jpeg" ||
+    file.type === "image/jpg" ||
+    file.type === "image/png" ||
+    file.type === "image/gif" ||
+    file.type === "image/webp"
+  );
+}
 
 export async function POST(request: Request) {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (request.body === null) {
-    return new Response("Request body is empty", { status: 400 });
   }
 
   try {
     const formData = await request.formData();
-    const file = formData.get("file") as Blob;
+    const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const validatedFile = FileSchema.safeParse({ file });
-
-    if (!validatedFile.success) {
-      const errorMessage = validatedFile.error.errors
-        .map((error) => error.message)
-        .join(", ");
-
-      return NextResponse.json({ error: errorMessage }, { status: 400 });
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is 10 MB.` },
+        { status: 400 }
+      );
     }
 
-    const filename = (formData.get("file") as File).name;
-    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const fileBuffer = await file.arrayBuffer();
+    if (!isTextFile(file) && !isImageFile(file)) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid file type. Only images (JPEG, PNG, GIF, WebP) and text files (TXT, MD, CSV) are allowed.",
+        },
+        { status: 400 }
+      );
+    }
 
-    try {
-      const data = await put(`${safeName}`, fileBuffer, {
-        access: "public",
+    // Text files: read content and return it directly — no blob storage needed
+    if (isTextFile(file)) {
+      const textContent = await file.text();
+      return NextResponse.json({
+        url: `data:text/plain;charset=utf-8,${encodeURIComponent(textContent)}`,
+        name: file.name,
+        contentType: "text/plain",
+        textContent,
       });
-
-      return NextResponse.json(data);
-    } catch (_error) {
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
-  } catch (_error) {
+
+    // Images: upload to Vercel Blob
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const blob = await put(
+      `chat-uploads/${session.user.id}/${Date.now()}-${safeName}`,
+      file,
+      { access: "public" }
+    );
+
+    return NextResponse.json({
+      url: blob.url,
+      name: file.name,
+      contentType: file.type,
+    });
+  } catch (error) {
+    console.error("[v0] File upload error:", error);
     return NextResponse.json(
-      { error: "Failed to process request" },
+      { error: "Upload failed. Please try again." },
       { status: 500 }
     );
   }
