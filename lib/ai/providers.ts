@@ -1,5 +1,6 @@
 import { customProvider } from "ai";
 import { isTestEnvironment } from "../constants";
+import type { LanguageModelV1, LanguageModelV1StreamPart } from "@ai-sdk/provider";
 
 if (!process.env.APIFREELLM_API_KEY) {
   console.warn("[v0] APIFREELLM_API_KEY is not set — AI responses will fail.");
@@ -7,19 +8,7 @@ if (!process.env.APIFREELLM_API_KEY) {
 
 const APIFREELLM_BASE_URL = "https://apifreellm.com/api/v1/chat";
 
-export const myProvider = isTestEnvironment
-  ? (() => {
-      const { chatModel, titleModel } = require("./models.mock");
-      return customProvider({
-        languageModels: {
-          "chat-model": chatModel,
-          "title-model": titleModel,
-        },
-      });
-    })()
-  : null;
-
-// ApiFreeLLM doesn't follow OpenAI format, so we create a custom fetch wrapper
+// Call the ApiFreeLLM API with the given prompt text
 async function callApiFreeLLM(message: string): Promise<string> {
   const response = await fetch(APIFREELLM_BASE_URL, {
     method: "POST",
@@ -27,120 +16,129 @@ async function callApiFreeLLM(message: string): Promise<string> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.APIFREELLM_API_KEY ?? ""}`,
     },
-    body: JSON.stringify({
-      message,
-      model: "apifreellm",
-    }),
+    body: JSON.stringify({ message }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`ApiFreeLLM API error: ${response.status} - ${errorText}`);
+    throw new Error(`ApiFreeLLM error ${response.status}: ${errorText}`);
   }
 
   const data = await response.json();
   return data.response ?? "";
 }
 
-// Create a wrapper that converts ApiFreeLLM to AI SDK compatible format
-export function getLanguageModel(modelId: string) {
-  if (isTestEnvironment && myProvider) {
-    return myProvider.languageModel("chat-model");
+// Helper: flatten AI SDK prompt messages into a single string
+function flattenPrompt(
+  prompt: Array<{
+    role: string;
+    content:
+      | string
+      | Array<{ type: string; text?: string; [key: string]: unknown }>;
+  }>
+): string {
+  const parts: string[] = [];
+
+  for (const message of prompt) {
+    let text = "";
+    if (typeof message.content === "string") {
+      text = message.content;
+    } else if (Array.isArray(message.content)) {
+      text = message.content
+        .filter((p) => p.type === "text" && typeof p.text === "string")
+        .map((p) => p.text as string)
+        .join("\n");
+    }
+
+    if (!text.trim()) continue;
+
+    if (message.role === "system") {
+      parts.push(text);
+    } else if (message.role === "user") {
+      parts.push(`User: ${text}`);
+    } else if (message.role === "assistant") {
+      parts.push(`Assistant: ${text}`);
+    }
   }
 
-  // Return a custom model wrapper for ApiFreeLLM
+  return parts.join("\n\n");
+}
+
+// Build a LanguageModelV1-compatible object wrapping the ApiFreeLLM API
+function createApiFreeLLMModel(modelId: string): LanguageModelV1 {
   return {
-    modelId,
+    specificationVersion: "v1",
     provider: "apifreellm",
-    specificationVersion: "v1" as const,
-    defaultObjectGenerationMode: "json" as const,
+    modelId,
+    defaultObjectGenerationMode: "json",
     supportsImageUrls: false,
     supportsStructuredOutputs: false,
-    
-    async doGenerate(options: {
-      prompt: Array<{ role: string; content: string | Array<{ type: string; text?: string }> }>;
-      mode?: { type: string };
-    }) {
-      // Extract the last user message
-      const lastMessage = options.prompt
-        .filter((m) => m.role === "user")
-        .pop();
 
-      let messageText = "";
-      if (lastMessage) {
-        if (typeof lastMessage.content === "string") {
-          messageText = lastMessage.content;
-        } else if (Array.isArray(lastMessage.content)) {
-          messageText = lastMessage.content
-            .filter((part) => part.type === "text" && part.text)
-            .map((part) => part.text)
-            .join("\n");
-        }
-      }
-
-      // Include system message context
-      const systemMessage = options.prompt.find((m) => m.role === "system");
-      if (systemMessage) {
-        const systemText =
-          typeof systemMessage.content === "string"
-            ? systemMessage.content
-            : Array.isArray(systemMessage.content)
-              ? systemMessage.content
-                  .filter((part) => part.type === "text" && part.text)
-                  .map((part) => part.text)
-                  .join("\n")
-              : "";
-        messageText = `${systemText}\n\nUser: ${messageText}`;
-      }
-
-      const response = await callApiFreeLLM(messageText);
+    async doGenerate(options) {
+      const message = flattenPrompt(options.prompt as Parameters<typeof flattenPrompt>[0]);
+      const text = await callApiFreeLLM(message);
 
       return {
-        text: response,
-        finishReason: "stop" as const,
-        usage: {
-          promptTokens: 0,
-          completionTokens: 0,
-        },
-        rawCall: {
-          rawPrompt: messageText,
-          rawSettings: {},
-        },
+        text,
+        finishReason: "stop",
+        usage: { promptTokens: 0, completionTokens: 0 },
+        rawCall: { rawPrompt: message, rawSettings: {} },
       };
     },
 
-    async doStream(options: {
-      prompt: Array<{ role: string; content: string | Array<{ type: string; text?: string }> }>;
-      mode?: { type: string };
-    }) {
-      // ApiFreeLLM doesn't support streaming, so we simulate it
-      const result = await this.doGenerate(options);
+    async doStream(options) {
+      const message = flattenPrompt(options.prompt as Parameters<typeof flattenPrompt>[0]);
+      const text = await callApiFreeLLM(message);
+
+      // ApiFreeLLM free tier doesn't stream — simulate it as a single chunk
+      const stream = new ReadableStream<LanguageModelV1StreamPart>({
+        start(controller) {
+          controller.enqueue({ type: "text-delta", textDelta: text });
+          controller.enqueue({
+            type: "finish",
+            finishReason: "stop",
+            usage: { promptTokens: 0, completionTokens: 0 },
+          });
+          controller.close();
+        },
+      });
 
       return {
-        stream: new ReadableStream({
-          start(controller) {
-            // Send the response as a single chunk
-            controller.enqueue({
-              type: "text-delta",
-              textDelta: result.text,
-            });
-            controller.enqueue({
-              type: "finish",
-              finishReason: "stop",
-              usage: result.usage,
-            });
-            controller.close();
-          },
-        }),
-        rawCall: result.rawCall,
+        stream,
+        rawCall: { rawPrompt: message, rawSettings: {} },
       };
     },
   };
 }
 
-export function getTitleModel() {
-  if (isTestEnvironment && myProvider) {
-    return myProvider.languageModel("title-model");
+// Mock provider for test environment
+const mockProvider = isTestEnvironment
+  ? (() => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { chatModel, titleModel } = require("./models.mock");
+        return customProvider({
+          languageModels: {
+            "chat-model": chatModel,
+            "title-model": titleModel,
+          },
+        });
+      } catch {
+        return null;
+      }
+    })()
+  : null;
+
+export function getLanguageModel(modelId: string): LanguageModelV1 {
+  if (isTestEnvironment && mockProvider) {
+    return mockProvider.languageModel("chat-model");
   }
-  return getLanguageModel("lio-1");
+  return createApiFreeLLMModel(modelId);
+}
+
+export function getTitleModel(): LanguageModelV1 {
+  if (isTestEnvironment && mockProvider) {
+    return mockProvider.languageModel("title-model");
+  }
+  return createApiFreeLLMModel("lio-1");
 }
