@@ -7,8 +7,8 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  title: "Lio 1.0",
-  description: "Lio 1.0 — AI assistant by PeytOtoria.",
+  title: "PeytOtoria",
+  description: "PeytOtoria - Chat with Lio 1.0, your AI assistant developed by PeytOtoria.com developers.",
 };
 
 export const viewport = {
