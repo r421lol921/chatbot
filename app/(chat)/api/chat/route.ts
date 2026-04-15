@@ -242,7 +242,7 @@ export async function POST(request: Request) {
           dataStream.write({
             type: "text-delta",
             id: messageId,
-            text: char,
+            delta: char,
           });
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
