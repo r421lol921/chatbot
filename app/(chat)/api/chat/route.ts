@@ -295,6 +295,7 @@ export async function POST(request: Request) {
         }
       },
       onError: (error) => {
+        console.error("[v0] chat stream error:", error);
         if (error instanceof ChatbotError) {
           return error.message;
         }

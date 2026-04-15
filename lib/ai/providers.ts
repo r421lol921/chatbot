@@ -10,7 +10,7 @@ const groqProvider = GROQ_API_KEY ? createGroq({ apiKey: GROQ_API_KEY }) : null;
 
 // Vercel AI Gateway (zero-config when AI_GATEWAY_API_KEY is set)
 const gatewayProvider = createOpenAI({
-  baseURL: "https://ai-gateway.vercel.sh/v1/openai",
+  baseURL: "https://ai-gateway.vercel.sh/v1",
   apiKey: process.env.AI_GATEWAY_API_KEY ?? "",
 });
 
