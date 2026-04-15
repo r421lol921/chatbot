@@ -233,57 +233,50 @@ export async function POST(request: Request) {
 
         // ── Weather intent ──────────────────────────────────────────────
         if (intent.type === "weather" && intent.location) {
-          const toolCallId = generateId();
-          dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getWeather" });
-          dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ city: intent.location }) });
-
+          let weatherText: string;
           try {
-            const weatherResult = await executeGetWeather({ city: intent.location });
-            dataStream.write({ type: "tool-result", toolCallId, result: weatherResult });
-
-            const intro = `Here is the current weather for **${intent.location}**:`;
-            dataStream.write({ type: "text-start", id: messageId });
-            for (const char of intro) {
-              dataStream.write({ type: "text-delta", id: messageId, delta: char });
-              await new Promise((r) => setTimeout(r, 30));
+            const w = await executeGetWeather({ city: intent.location }) as Record<string, unknown>;
+            if (w.error) {
+              weatherText = `Hmm, I couldn't find weather data for **${intent.location}**. Double-check the city name and try again!`;
+            } else {
+              const current = (w.current ?? {}) as Record<string, unknown>;
+              const temp = current.temperature_2m;
+              const units = (w.current_units ?? {}) as Record<string, unknown>;
+              const unit = units.temperature_2m ?? "°C";
+              const cityName = (w.cityName as string) || intent.location;
+              weatherText = `Here is the weather for **${cityName}**:\n\n- **Temperature:** ${temp}${unit}\n- **Updated:** just now\n\nLet me know if you want more details like hourly forecasts!`;
             }
-            dataStream.write({ type: "text-end", id: messageId });
           } catch {
-            const fallback = `I tried fetching the weather for ${intent.location} but hit a snag. Try asking again in a moment!`;
-            dataStream.write({ type: "text-start", id: messageId });
-            for (const char of fallback) {
-              dataStream.write({ type: "text-delta", id: messageId, delta: char });
-              await new Promise((r) => setTimeout(r, 35));
-            }
-            dataStream.write({ type: "text-end", id: messageId });
+            weatherText = `I tried fetching the weather for **${intent.location}** but hit a snag. Try again in a moment!`;
           }
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of weatherText) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 30));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
 
         // ── Map intent ─────────────────────────────────────────────────
         } else if (intent.type === "map" && intent.location) {
-          const toolCallId = generateId();
-          dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getMap" });
-          dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ query: intent.location }) });
-
+          let mapText: string;
           try {
-            const mapResult = await executeGetMap({ query: intent.location, zoom: 13 });
-            dataStream.write({ type: "tool-result", toolCallId, result: mapResult });
-
-            const intro = `Here is a map for **${intent.location}**:`;
-            dataStream.write({ type: "text-start", id: messageId });
-            for (const char of intro) {
-              dataStream.write({ type: "text-delta", id: messageId, delta: char });
-              await new Promise((r) => setTimeout(r, 30));
+            const m = await executeGetMap({ query: intent.location, zoom: 13 }) as Record<string, unknown>;
+            if (m.error) {
+              mapText = `I couldn't find a map for **${intent.location}**. Try a more specific location name!`;
+            } else {
+              const displayName = (m.displayName as string) || intent.location;
+              const linkUrl = m.linkUrl as string;
+              mapText = `Here is a map for **${displayName}**:\n\n[Open in OpenStreetMap](${linkUrl})\n\nCoordinates: **${(m.latitude as number).toFixed(4)}, ${(m.longitude as number).toFixed(4)}**`;
             }
-            dataStream.write({ type: "text-end", id: messageId });
           } catch {
-            const fallback = `Couldn't load the map for ${intent.location} right now. Try again in a moment!`;
-            dataStream.write({ type: "text-start", id: messageId });
-            for (const char of fallback) {
-              dataStream.write({ type: "text-delta", id: messageId, delta: char });
-              await new Promise((r) => setTimeout(r, 35));
-            }
-            dataStream.write({ type: "text-end", id: messageId });
+            mapText = `Couldn't load the map for **${intent.location}** right now. Try again in a moment!`;
           }
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of mapText) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 30));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
 
         // ── Code generation intent ──────────────────────────────────────
         } else if (intent.type === "code") {
