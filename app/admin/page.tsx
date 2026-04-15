@@ -2,11 +2,28 @@
 
 import { useState } from "react";
 
+const ADMIN_PASSPHRASE = "Peyton William Price";
+
 export default function AdminPage() {
+  const [name, setName] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+  const [nameError, setNameError] = useState(false);
+
   const [email, setEmail] = useState("");
   const [type, setType] = useState<"plus" | "regular">("plus");
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim().toLowerCase() === ADMIN_PASSPHRASE.toLowerCase()) {
+      setAuthorized(true);
+      setNameError(false);
+    } else {
+      setNameError(true);
+      setName("");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +48,39 @@ export default function AdminPage() {
       setLoading(false);
     }
   };
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-xs rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h1 className="text-lg font-bold text-foreground mb-1">Admin Access</h1>
+          <p className="text-[12px] text-muted-foreground mb-6">
+            Enter your full name to continue.
+          </p>
+          <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
+            <input
+              type="text"
+              autoFocus
+              autoComplete="off"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setNameError(false); }}
+              placeholder="Full name"
+              className={`h-9 rounded-lg border bg-background px-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-colors ${nameError ? "border-red-500" : "border-border"}`}
+            />
+            {nameError && (
+              <p className="text-[11px] text-red-500 -mt-2">Incorrect name. Try again.</p>
+            )}
+            <button
+              type="submit"
+              className="h-9 rounded-lg bg-foreground text-background text-[13px] font-semibold hover:opacity-90 transition-opacity"
+            >
+              Continue
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
