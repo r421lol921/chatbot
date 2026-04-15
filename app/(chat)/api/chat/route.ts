@@ -252,16 +252,6 @@ export async function POST(request: Request) {
           id: messageId,
         });
 
-        // Write the complete message
-        dataStream.write({
-          type: "message",
-          message: {
-            id: messageId,
-            role: "assistant",
-            content: randomResponse,
-          },
-        });
-
         if (titlePromise) {
           const title = await titlePromise;
           dataStream.write({ type: "data-chat-title", data: title });
