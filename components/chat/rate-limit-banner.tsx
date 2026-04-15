@@ -11,6 +11,8 @@ type RateLimitStatus = {
   secondsRemaining: number;
   intervalHours?: number;
   userType?: string;
+  messagesUsed?: number;
+  messagesMax?: number;
 };
 
 function formatTime(seconds: number): string {
@@ -68,7 +70,7 @@ export function RateLimitBanner() {
             Message limit reached
           </p>
           <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-            1 message per {intervalHours} hours &mdash; resets in{" "}
+            {data?.messagesMax ?? (isPlus ? 1000 : 25)} messages per {intervalHours}h limit reached &mdash; resets in{" "}
             <span className="font-semibold tabular-nums text-foreground">
               {formatTime(countdown)}
             </span>

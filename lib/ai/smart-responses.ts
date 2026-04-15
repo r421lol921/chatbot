@@ -787,6 +787,128 @@ const categoryPriority: MessageCategory[] = [
   "generic",
 ];
 
+// ─── Intent Detection ─────────────────────────────────────────────────────────
+
+export type MessageIntent =
+  | { type: "weather"; location: string }
+  | { type: "map"; location: string }
+  | { type: "code"; topic: string }
+  | { type: "text" };
+
+/**
+ * Detects high-level intent (weather/map/code/text) so the chat route
+ * can dispatch to tools or code generation before falling back to text.
+ */
+export function detectIntent(userMessage: string): MessageIntent {
+  const text = userMessage.trim().toLowerCase();
+
+  // ── Weather ──────────────────────────────────────────────────────────
+  const weatherMatch = text.match(
+    /(?:weather|temperature|forecast|how (?:hot|cold|warm)|is it (?:hot|cold|raining|snowing))[\s\w]*(?:in|at|for|near)\s+(.+)/i
+  ) || text.match(
+    /(?:what(?:'s| is) the weather|weather update|current weather|check.*weather)[\s\w]*(?:in|at|for|near)\s+(.+)/i
+  );
+  if (weatherMatch) {
+    return { type: "weather", location: weatherMatch[1].replace(/[?!.,]+$/, "").trim() };
+  }
+  // Simple "weather [city]" or "[city] weather"
+  const simpleWeather = text.match(/^weather\s+(?:in\s+)?(.+)$/i) ||
+    text.match(/^(.+?)\s+weather$/i);
+  if (simpleWeather && /\b(weather|forecast|temp)\b/i.test(text)) {
+    return { type: "weather", location: simpleWeather[1].replace(/[?!.,]+$/, "").trim() };
+  }
+
+  // ── Map ───────────────────────────────────────────────────────────────
+  const mapMatch = text.match(
+    /(?:show me|find|map of|map|directions to|where is|locate|navigate to)\s+(?:a\s+map\s+(?:of|for)\s+)?(.+)/i
+  );
+  if (mapMatch && /\b(map|show|find|where|locate|directions|navigate)\b/i.test(text)) {
+    const location = mapMatch[1].replace(/\b(on a map|on the map|please|for me)\b/gi, "").replace(/[?!.,]+$/, "").trim();
+    if (location.length > 1) {
+      return { type: "map", location };
+    }
+  }
+
+  // ── Code generation ───────────────────────────────────────────────────
+  if (
+    /\b(write|generate|create|give me|show me|make|build|code)\b.*\b(code|function|script|program|class|component|snippet|example)\b/i.test(text) ||
+    /\b(code|function|script|program|class|component|snippet|example)\b.*\b(for|that|to|which)\b/i.test(text) ||
+    /\bhow (do i|do you|to)\b.*\b(code|program|implement|build|create|write)\b/i.test(text)
+  ) {
+    return { type: "code", topic: text };
+  }
+
+  return { type: "text" };
+}
+
+// ─── Code Generation ─────────────────────────────────────────────────────────
+
+/**
+ * Generates a basic code snippet based on the user's request.
+ * All purely in-process — no API calls.
+ */
+export function generateCodeResponse(userMessage: string): string {
+  const text = userMessage.toLowerCase();
+
+  // Hello world
+  if (/hello world/i.test(text)) {
+    if (/python/i.test(text)) {
+      return "Here's a Python Hello World:\n\n```python\nprint(\"Hello, World!\")\n```\n\nRun it with `python hello.py` and you're good to go!";
+    }
+    if (/java(?!script)/i.test(text)) {
+      return "Here's a Java Hello World:\n\n```java\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}\n```";
+    }
+    return "Here's a JavaScript Hello World:\n\n```javascript\nconsole.log(\"Hello, World!\");\n```\n\nSimple, clean, and classic!";
+  }
+
+  // Fetch / API call
+  if (/fetch|api call|http request|get request|post request/i.test(text)) {
+    return "Here's how to make a fetch request in JavaScript:\n\n```javascript\nasync function getData(url) {\n  try {\n    const response = await fetch(url);\n    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);\n    const data = await response.json();\n    return data;\n  } catch (error) {\n    console.error('Fetch failed:', error);\n  }\n}\n\n// Usage\ngetData('https://api.example.com/data').then(console.log);\n```";
+  }
+
+  // For loop
+  if (/for loop|iterate|loop/i.test(text)) {
+    if (/python/i.test(text)) {
+      return "Here's a for loop in Python:\n\n```python\nfor i in range(10):\n    print(f\"Number: {i}\")\n\n# Loop over a list\nitems = [\"apple\", \"banana\", \"cherry\"]\nfor item in items:\n    print(item)\n```";
+    }
+    return "Here's a for loop in JavaScript:\n\n```javascript\n// Classic for loop\nfor (let i = 0; i < 10; i++) {\n  console.log(`Number: ${i}`);\n}\n\n// Loop over an array\nconst items = ['apple', 'banana', 'cherry'];\nfor (const item of items) {\n  console.log(item);\n}\n```";
+  }
+
+  // Function
+  if (/function|method/i.test(text)) {
+    if (/python/i.test(text)) {
+      return "Here's a Python function:\n\n```python\ndef greet(name: str) -> str:\n    \"\"\"Returns a greeting message.\"\"\"\n    return f\"Hello, {name}!\"\n\n# Call it\nprint(greet(\"World\"))  # Hello, World!\n```";
+    }
+    return "Here's a JavaScript function:\n\n```javascript\n// Arrow function\nconst greet = (name) => `Hello, ${name}!`;\n\n// Traditional function\nfunction greetUser(name) {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet('World')); // Hello, World!\n```";
+  }
+
+  // Array / list operations
+  if (/array|list|filter|map|reduce/i.test(text)) {
+    return "Here are common array operations in JavaScript:\n\n```javascript\nconst numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];\n\n// Filter even numbers\nconst evens = numbers.filter(n => n % 2 === 0);\n// [2, 4, 6, 8, 10]\n\n// Double each number\nconst doubled = numbers.map(n => n * 2);\n// [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]\n\n// Sum all numbers\nconst sum = numbers.reduce((acc, n) => acc + n, 0);\n// 55\n```";
+  }
+
+  // React component
+  if (/react|component/i.test(text)) {
+    return "Here's a simple React component:\n\n```tsx\nimport { useState } from 'react';\n\ninterface ButtonProps {\n  label: string;\n  onClick?: () => void;\n}\n\nexport function Button({ label, onClick }: ButtonProps) {\n  const [clicked, setClicked] = useState(false);\n\n  const handleClick = () => {\n    setClicked(true);\n    onClick?.();\n  };\n\n  return (\n    <button\n      onClick={handleClick}\n      style={{ background: clicked ? 'green' : 'blue', color: 'white', padding: '8px 16px' }}\n    >\n      {clicked ? 'Clicked!' : label}\n    </button>\n  );\n}\n```";
+  }
+
+  // CSS
+  if (/css|style|flexbox|grid|center/i.test(text)) {
+    if (/center|centering/i.test(text)) {
+      return "Here's how to center things in CSS:\n\n```css\n/* Center with Flexbox (recommended) */\n.container {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  height: 100vh;\n}\n\n/* Center with Grid */\n.container {\n  display: grid;\n  place-items: center;\n  height: 100vh;\n}\n```";
+    }
+    return "Here's a CSS Flexbox layout:\n\n```css\n.container {\n  display: flex;\n  flex-direction: row;\n  justify-content: space-between;\n  align-items: center;\n  gap: 16px;\n  flex-wrap: wrap;\n}\n\n.item {\n  flex: 1;\n  min-width: 200px;\n  padding: 16px;\n  border-radius: 8px;\n  background: #f5f5f5;\n}\n```";
+  }
+
+  // Sort
+  if (/sort|sorting|order/i.test(text)) {
+    return "Here's how to sort in JavaScript:\n\n```javascript\n// Sort numbers\nconst nums = [5, 2, 8, 1, 9, 3];\nnums.sort((a, b) => a - b); // ascending\n// [1, 2, 3, 5, 8, 9]\n\n// Sort strings\nconst names = ['Charlie', 'Alice', 'Bob'];\nnames.sort(); // alphabetical\n// ['Alice', 'Bob', 'Charlie']\n\n// Sort objects by property\nconst users = [{ name: 'Charlie', age: 30 }, { name: 'Alice', age: 25 }];\nusers.sort((a, b) => a.age - b.age);\n```";
+  }
+
+  // Generic code request
+  return "I can generate code for you! Here's a helpful general utility:\n\n```javascript\n// Deep clone an object\nfunction deepClone(obj) {\n  return JSON.parse(JSON.stringify(obj));\n}\n\n// Debounce a function\nfunction debounce(fn, delay) {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delay);\n  };\n}\n\n// Format a date nicely\nfunction formatDate(date) {\n  return new Intl.DateTimeFormat('en-US', {\n    year: 'numeric', month: 'long', day: 'numeric'\n  }).format(date);\n}\n```\n\nTell me more specifically what you need and I'll write it for you!";
+}
+
 /**
  * Main smart response function. Reads the user message, classifies it,
  * and returns a contextually appropriate, personality-filled response.

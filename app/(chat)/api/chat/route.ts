@@ -35,7 +35,9 @@ import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
-import { generateSmartResponse, generateThinkingText } from "@/lib/ai/smart-responses";
+import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse } from "@/lib/ai/smart-responses";
+import { getWeather } from "@/lib/ai/tools/get-weather";
+import { getMap } from "@/lib/ai/tools/get-map";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
@@ -153,15 +155,12 @@ export async function POST(request: Request) {
     // Check rate limit BEFORE saving the message so the saved message
     // doesn't immediately count against the user on the very same request.
     if (!isToolApprovalFlow) {
-      const lastMessageTime = await getLastUserMessageTime({
-        userId: session.user.id,
+      const messageCount = await getMessageCountByUserId({
+        id: session.user.id,
+        differenceInHours: entitlements.messageIntervalHours,
       });
-      if (lastMessageTime) {
-        const hoursSinceLastMessage =
-          (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLastMessage < entitlements.messageIntervalHours) {
-          return new ChatbotError("rate_limit:chat").toResponse();
-        }
+      if (messageCount >= entitlements.maxMessagesPerHour) {
+        return new ChatbotError("rate_limit:chat").toResponse();
       }
     }
 
@@ -202,6 +201,9 @@ export async function POST(request: Request) {
         const reasoningId = generateId();
         const messageId = generateId();
 
+        // Detect intent: weather, map, code, or generic text
+        const intent = detectIntent(userMessageText);
+
         // Generate contextual thinking text based on the message
         const thinkingText = generateThinkingText(userMessageText);
 
@@ -225,33 +227,86 @@ export async function POST(request: Request) {
           id: reasoningId,
         });
 
-        // Slightly shorter delay so it feels snappy but still natural
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.random() * 1200 + 600)
+          setTimeout(resolve, Math.random() * 800 + 400)
         );
 
-        // Generate a smart, contextual response
-        const smartResponse = generateSmartResponse(userMessageText);
+        // ── Weather intent ──────────────────────────────────────────────
+        if (intent.type === "weather" && intent.location) {
+          const toolCallId = generateId();
+          dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getWeather" });
+          dataStream.write({ type: "tool-input-delta", toolCallId, delta: JSON.stringify({ city: intent.location }) });
+          dataStream.write({ type: "tool-input-end", toolCallId });
 
-        // Stream the response character by character for the typing effect
-        dataStream.write({
-          type: "text-start",
-          id: messageId,
-        });
+          try {
+            const weatherResult = await getWeather.execute({ city: intent.location }, { toolCallId, messages: [] });
+            dataStream.write({ type: "tool-result", toolCallId, result: weatherResult });
 
-        for (const char of smartResponse) {
-          dataStream.write({
-            type: "text-delta",
-            id: messageId,
-            delta: char,
-          });
-          await new Promise((resolve) => setTimeout(resolve, 40));
+            const intro = `Here is the current weather for **${intent.location}**:`;
+            dataStream.write({ type: "text-start", id: messageId });
+            for (const char of intro) {
+              dataStream.write({ type: "text-delta", id: messageId, delta: char });
+              await new Promise((r) => setTimeout(r, 30));
+            }
+            dataStream.write({ type: "text-end", id: messageId });
+          } catch {
+            const fallback = `I tried fetching the weather for ${intent.location} but hit a snag. Try asking again in a moment!`;
+            dataStream.write({ type: "text-start", id: messageId });
+            for (const char of fallback) {
+              dataStream.write({ type: "text-delta", id: messageId, delta: char });
+              await new Promise((r) => setTimeout(r, 35));
+            }
+            dataStream.write({ type: "text-end", id: messageId });
+          }
+
+        // ── Map intent ─────────────────────────────────────────────────
+        } else if (intent.type === "map" && intent.location) {
+          const toolCallId = generateId();
+          dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getMap" });
+          dataStream.write({ type: "tool-input-delta", toolCallId, delta: JSON.stringify({ query: intent.location }) });
+          dataStream.write({ type: "tool-input-end", toolCallId });
+
+          try {
+            const mapResult = await getMap.execute({ query: intent.location, zoom: 13 }, { toolCallId, messages: [] });
+            dataStream.write({ type: "tool-result", toolCallId, result: mapResult });
+
+            const intro = `Here is a map for **${intent.location}**:`;
+            dataStream.write({ type: "text-start", id: messageId });
+            for (const char of intro) {
+              dataStream.write({ type: "text-delta", id: messageId, delta: char });
+              await new Promise((r) => setTimeout(r, 30));
+            }
+            dataStream.write({ type: "text-end", id: messageId });
+          } catch {
+            const fallback = `Couldn't load the map for ${intent.location} right now. Try again in a moment!`;
+            dataStream.write({ type: "text-start", id: messageId });
+            for (const char of fallback) {
+              dataStream.write({ type: "text-delta", id: messageId, delta: char });
+              await new Promise((r) => setTimeout(r, 35));
+            }
+            dataStream.write({ type: "text-end", id: messageId });
+          }
+
+        // ── Code generation intent ──────────────────────────────────────
+        } else if (intent.type === "code") {
+          const codeResponse = generateCodeResponse(userMessageText);
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of codeResponse) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 25));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
+
+        // ── Generic smart text response ─────────────────────────────────
+        } else {
+          const smartResponse = generateSmartResponse(userMessageText);
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of smartResponse) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((resolve) => setTimeout(resolve, 40));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
         }
-
-        dataStream.write({
-          type: "text-end",
-          id: messageId,
-        });
 
         if (titlePromise) {
           const title = await titlePromise;
@@ -299,10 +354,10 @@ export async function POST(request: Request) {
       },
       onError: (error) => {
         console.error("[v0] chat stream error:", error);
-        if (error instanceof ChatbotError) {
-          return error.message;
-        }
-        return "Something went wrong. Please try again.";
+        // Return undefined so the SDK does not inject an error text-part
+        // into the finished messages — the HTTP status code already surfaces
+        // rate-limit / auth errors to the client via ChatbotError.toResponse().
+        return undefined;
       },
     });
 
