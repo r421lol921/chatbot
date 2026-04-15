@@ -42,10 +42,19 @@ const connectionString =
   process.env.DATABASE_URL ??
   "";
 
-// Supabase pooled URLs already include sslmode in the query string,
-// so we only add ssl:"require" for plain connection strings.
+// Supabase pooled (PgBouncer) URLs include ?pgbouncer=true and sslmode in
+// the query string. Prepared statements must be disabled for the pooler.
+const isPooled =
+  connectionString.includes("pgbouncer=true") ||
+  connectionString.includes("6543"); // Supabase pooler port
+
 const hasSslParam = connectionString.includes("sslmode=");
-const sqlClient = postgres(connectionString, hasSslParam ? {} : { ssl: "require" });
+
+const sqlClient = postgres(connectionString, {
+  ...(hasSslParam ? {} : { ssl: "require" }),
+  ...(isPooled ? { prepare: false } : {}),
+  max: 10,
+});
 export const db = drizzle(sqlClient);
 
 export async function getUser(email: string): Promise<User[]> {

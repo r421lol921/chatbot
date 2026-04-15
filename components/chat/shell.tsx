@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveChat } from "@/hooks/use-active-chat";
+import { useWebLLM } from "@/hooks/use-webllm";
 import {
   initialArtifactData,
   useArtifact,
   useArtifactSelector,
 } from "@/hooks/use-artifact";
 import type { Attachment, ChatMessage } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { ChatHeader } from "./chat-header";
 import { DataStreamHandler } from "./data-stream-handler";
@@ -43,6 +44,117 @@ export function ChatShell() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
+  
+  const webllm = useWebLLM();
+  const [localStatus, setLocalStatus] = useState<"ready" | "submitted">("ready");
+  
+  // Handle sending messages with local model
+  const sendLocalMessage = useCallback(
+    async (message: ChatMessage) => {
+      if (webllm.status !== "ready") {
+        return;
+      }
+
+      // Add user message to state
+      const userMessage: ChatMessage = {
+        ...message,
+        id: message.id || generateUUID(),
+        metadata: { createdAt: new Date().toISOString() },
+      };
+      
+      setMessages((prev) => [...prev, userMessage]);
+      setLocalStatus("submitted");
+
+      // Create placeholder assistant message
+      const assistantId = generateUUID();
+      const assistantMessage: ChatMessage = {
+        id: assistantId,
+        role: "assistant",
+        parts: [{ type: "text", text: "" }],
+        metadata: { createdAt: new Date().toISOString() },
+      };
+      
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      try {
+        // Convert messages to WebLLM format
+        const chatHistory = [...messages, userMessage].map((m) => {
+          const textPart = m.parts?.find((p) => p.type === "text");
+          return {
+            role: m.role as "user" | "assistant" | "system",
+            content: textPart && "text" in textPart ? textPart.text : "",
+          };
+        });
+
+        // Stream the response
+        await webllm.generateResponse(chatHistory, (chunk) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? {
+                    ...m,
+                    parts: [
+                      {
+                        type: "text",
+                        text:
+                          ((m.parts?.[0] as { text?: string })?.text || "") +
+                          chunk,
+                      },
+                    ],
+                  }
+                : m
+            )
+          );
+        });
+      } catch (error) {
+        console.error("[v0] Local model error:", error);
+        // Update the assistant message to show error
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  parts: [
+                    {
+                      type: "text",
+                      text: "Sorry, I encountered an error generating a response.",
+                    },
+                  ],
+                }
+              : m
+          )
+        );
+      } finally {
+        setLocalStatus("ready");
+      }
+    },
+    [webllm, messages, setMessages]
+  );
+  
+  // Determine if we should use local model (user explicitly activated on-device mode)
+  const useLocalChat = webllm.isActive &&
+    (webllm.status === "ready" || webllm.status === "generating");
+  
+  // Wrapped send function - matches sendMessage signature
+  const wrappedSendMessage: typeof sendMessage = useCallback(
+    (message) => {
+      if (useLocalChat) {
+        sendLocalMessage(message as ChatMessage);
+        return Promise.resolve(); 
+      } else {
+        return sendMessage(message);
+      }
+    },
+    [useLocalChat, sendLocalMessage, sendMessage]
+  );
+  
+  // Combined status
+  const effectiveStatus = useLocalChat ? localStatus : status;
+
+  // Wrap stopGeneration so it matches the () => Promise<void> signature
+  const localStop = useCallback(async () => {
+    webllm.stopGeneration();
+  }, [webllm]);
 
   const stopRef = useRef(stop);
   stopRef.current = stop;
@@ -92,7 +204,7 @@ export function ChatShell() {
               regenerate={regenerate}
               selectedModelId={currentModelId}
               setMessages={setMessages}
-              status={status}
+              status={effectiveStatus}
               votes={votes}
             />
 
@@ -127,13 +239,13 @@ export function ChatShell() {
                           });
                           setInput("");
                         }
-                      : sendMessage
+                      : wrappedSendMessage
                   }
                   setAttachments={setAttachments}
                   setInput={setInput}
                   setMessages={setMessages}
-                  status={status}
-                  stop={stop}
+                  status={effectiveStatus}
+                  stop={useLocalChat ? localStop : stop}
                 />
               )}
               </div>
@@ -151,12 +263,12 @@ export function ChatShell() {
           regenerate={regenerate}
           selectedModelId={currentModelId}
           selectedVisibilityType={visibilityType}
-          sendMessage={sendMessage}
+          sendMessage={wrappedSendMessage}
           setAttachments={setAttachments}
           setInput={setInput}
           setMessages={setMessages}
-          status={status}
-          stop={stop}
+          status={effectiveStatus}
+          stop={useLocalChat ? localStop : stop}
           votes={votes}
         />
       </div>

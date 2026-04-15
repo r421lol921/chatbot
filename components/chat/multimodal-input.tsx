@@ -19,10 +19,12 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
-import { chatModels, PEYTO_PLUS_INFO } from "@/lib/ai/models";
+import { chatModels, PEYTO_PLUS_INFO, supportsLocalMode } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
+import { useWebLLM } from "@/hooks/use-webllm";
 import { cn } from "@/lib/utils";
-import { LockIcon } from "lucide-react";
+import { LockIcon, Cpu, Loader2 } from "lucide-react";
+import { WebLLMInstallModal } from "./webllm-install-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -630,6 +632,11 @@ function PureModelSelectorCompact({
   const selectedModel =
     chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
   const [showPlusModal, setShowPlusModal] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const webllm = useWebLLM();
+
+  const isOnDevice = webllm.isActive;
+  const isWebLLMLoading = webllm.status === "loading";
 
   return (
     <>
@@ -640,7 +647,17 @@ function PureModelSelectorCompact({
             data-testid="model-selector"
             type="button"
           >
+            {isWebLLMLoading && (
+              <Loader2 className="size-3 animate-spin" />
+            )}
             {selectedModel.name}
+            {/* On-device pill shown in the trigger */}
+            {isOnDevice && !isWebLLMLoading && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-semibold text-foreground/70">
+                <Cpu className="size-2.5" />
+                on device
+              </span>
+            )}
             <svg
               className="size-3 opacity-60"
               fill="none"
@@ -652,42 +669,86 @@ function PureModelSelectorCompact({
             </svg>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-[200px]" side="top">
-          {chatModels.map((model) => (
-            <DropdownMenuItem
-              key={model.id}
-              className={cn(
-                "flex items-center gap-2 py-2 group",
-                model.locked && "cursor-not-allowed opacity-70"
-              )}
-              onSelect={(e) => {
-                if (model.locked) {
-                  e.preventDefault();
-                  setShowPlusModal(true);
-                } else {
-                  onModelChange?.(model.id);
-                }
-              }}
-            >
-              <div className="flex flex-col items-start gap-0.5 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] font-medium">{model.name}</span>
-                  {model.locked && (
-                    <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+
+        <DropdownMenuContent align="start" className="min-w-[220px]" side="top">
+          {chatModels.map((model) => {
+            const canRunLocal = supportsLocalMode(model.id);
+            const isSelected = model.id === selectedModelId;
+            return (
+              <div key={model.id}>
+                <DropdownMenuItem
+                  className={cn(
+                    "flex items-center gap-2 py-2 group",
+                    model.locked && "cursor-not-allowed opacity-70"
                   )}
-                  {model.requiresPlus && (
-                    <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
-                      PLUS
+                  onSelect={(e) => {
+                    if (model.locked) {
+                      e.preventDefault();
+                      setShowPlusModal(true);
+                    } else {
+                      // If switching away from on-device mode, deactivate it
+                      if (model.id !== selectedModelId && webllm.isActive) {
+                        webllm.setActive(false);
+                      }
+                      onModelChange?.(model.id);
+                    }
+                  }}
+                >
+                  <div className="flex flex-col items-start gap-0.5 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-medium">{model.name}</span>
+                      {model.locked && (
+                        <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                      )}
+                      {model.requiresPlus && (
+                        <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
+                          PLUS
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      {model.description}
                     </span>
-                  )}
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  {model.description}
-                </span>
+                  </div>
+                </DropdownMenuItem>
+
+                {/* "Run on device" sub-option for supported models */}
+                {canRunLocal && isSelected && (
+                  <DropdownMenuItem
+                    className="mx-1 mb-1 flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-2.5 py-2 cursor-pointer group"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setShowInstallModal(true);
+                    }}
+                  >
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground/8 border border-border/40">
+                      {isWebLLMLoading ? (
+                        <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Cpu className="size-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-0">
+                      <span className="text-[12px] font-medium text-foreground leading-none">
+                        {isOnDevice ? "On device — active" : "Run on device"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                        {isWebLLMLoading
+                          ? `Downloading… ${Math.round(webllm.progress * 100)}%`
+                          : isOnDevice
+                          ? "Private · no internet needed"
+                          : "Private · ~400 MB · WebGPU"}
+                      </span>
+                    </div>
+                    {isOnDevice && (
+                      <div className="ml-auto size-1.5 rounded-full bg-foreground shrink-0" />
+                    )}
+                  </DropdownMenuItem>
+                )}
               </div>
-            </DropdownMenuItem>
-          ))}
-          
+            );
+          })}
+
           {/* PeytO Plus upsell */}
           <div className="border-t border-border/50 mt-1 pt-1">
             <DropdownMenuItem
@@ -710,13 +771,24 @@ function PureModelSelectorCompact({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* WebLLM Install Modal */}
+      <WebLLMInstallModal
+        open={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        onActivate={() => {
+          webllm.setActive(true);
+          // Make sure the model is selected
+          if (selectedModelId !== "lio-1") onModelChange?.("lio-1");
+        }}
+      />
+
       {/* PeytO Plus Modal */}
       {showPlusModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={() => setShowPlusModal(false)}
         >
-          <div 
+          <div
             className="bg-card border border-border/60 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -727,16 +799,16 @@ function PureModelSelectorCompact({
               <p className="text-2xl font-bold mt-2">{PEYTO_PLUS_INFO.price}</p>
               <p className="text-sm text-muted-foreground">One-time payment</p>
             </div>
-            
+
             <ul className="space-y-2 mb-6">
               {PEYTO_PLUS_INFO.benefits.map((benefit, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span className="text-green-500 mt-0.5">&#10003;</span>
                   <span>{benefit}</span>
                 </li>
               ))}
             </ul>
-            
+
             <div className="bg-muted/50 rounded-lg p-4 mb-4">
               <p className="text-sm text-center mb-2">
                 Send <span className="font-bold">{PEYTO_PLUS_INFO.price}</span> to:
@@ -748,11 +820,12 @@ function PureModelSelectorCompact({
                 on {PEYTO_PLUS_INFO.paymentMethod}
               </p>
             </div>
-            
+
             <p className="text-xs text-center text-muted-foreground mb-4">
-              After payment, contact support with your CashApp receipt to activate your Plus membership.
+              After payment, contact support with your CashApp receipt to activate
+              your Plus membership.
             </p>
-            
+
             <button
               className="w-full py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
               onClick={() => setShowPlusModal(false)}
