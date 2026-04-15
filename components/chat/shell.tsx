@@ -8,7 +8,6 @@ import {
   useArtifact,
   useArtifactSelector,
 } from "@/hooks/use-artifact";
-import { isLocalModel } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn, generateUUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
@@ -18,7 +17,6 @@ import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { RateLimitBanner } from "./rate-limit-banner";
-import { WebLLMBanner } from "./webllm-banner";
 
 export function ChatShell() {
   const {
@@ -133,8 +131,8 @@ export function ChatShell() {
     [webllm, messages, setMessages]
   );
   
-  // Determine if we should use local model
-  const useLocalChat = isLocalModel(currentModelId) && 
+  // Determine if we should use local model (user explicitly activated on-device mode)
+  const useLocalChat = webllm.isActive &&
     (webllm.status === "ready" || webllm.status === "generating");
   
   // Wrapped send function - matches sendMessage signature
@@ -207,10 +205,6 @@ export function ChatShell() {
 
             <div className="sticky bottom-0 z-1 flex w-full flex-col gap-0 border-t-0 bg-background pt-1 pb-3 md:pb-4">
               <RateLimitBanner />
-              <WebLLMBanner 
-                selectedModelId={currentModelId} 
-                className="mx-auto mb-2 w-full max-w-4xl px-2 md:px-4"
-              />
               <div className="mx-auto w-full max-w-4xl px-2 md:px-4">
               {!isReadonly && (
                 <MultimodalInput
