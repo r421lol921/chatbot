@@ -36,8 +36,8 @@ import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse } from "@/lib/ai/smart-responses";
-import { getWeather } from "@/lib/ai/tools/get-weather";
-import { getMap } from "@/lib/ai/tools/get-map";
+import { executeGetWeather } from "@/lib/ai/tools/get-weather";
+import { executeGetMap } from "@/lib/ai/tools/get-map";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
@@ -238,7 +238,7 @@ export async function POST(request: Request) {
           dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ city: intent.location }) });
 
           try {
-            const weatherResult = await getWeather.execute({ city: intent.location }, { toolCallId, messages: [] });
+            const weatherResult = await executeGetWeather({ city: intent.location });
             dataStream.write({ type: "tool-result", toolCallId, result: weatherResult });
 
             const intro = `Here is the current weather for **${intent.location}**:`;
@@ -265,7 +265,7 @@ export async function POST(request: Request) {
           dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ query: intent.location }) });
 
           try {
-            const mapResult = await getMap.execute({ query: intent.location, zoom: 13 }, { toolCallId, messages: [] });
+            const mapResult = await executeGetMap({ query: intent.location, zoom: 13 });
             dataStream.write({ type: "tool-result", toolCallId, result: mapResult });
 
             const intro = `Here is a map for **${intent.location}**:`;
