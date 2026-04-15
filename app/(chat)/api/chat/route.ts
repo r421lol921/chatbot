@@ -214,7 +214,7 @@ export async function POST(request: Request) {
           dataStream.write({
             type: "reasoning-delta",
             id: reasoningId,
-            reasoning: char,
+            delta: char,
           });
           await new Promise((resolve) => setTimeout(resolve, 30));
         }
