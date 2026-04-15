@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET ?? "lio-dev-fallback-secret-change-in-production",
     secureCookie: !isDevelopmentEnvironment,
   });
 

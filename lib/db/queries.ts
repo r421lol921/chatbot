@@ -12,8 +12,8 @@ import {
   lt,
   type SQL,
 } from "drizzle-orm";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { ChatbotError } from "../errors";
@@ -36,12 +36,16 @@ import {
 } from "./schema";
 import { generateHashedPassword } from "./utils";
 
-const sqlClient = neon(
+const connectionString =
+  process.env.POSTGRES_URL ??
   process.env.DATABASE_URL ??
-    process.env.POSTGRES_URL ??
-    ""
-);
-export const db = drizzle({ client: sqlClient });
+  "";
+
+// Supabase pooled URLs already include sslmode in the query string,
+// so we only add ssl:"require" for plain connection strings.
+const hasSslParam = connectionString.includes("sslmode=");
+const sqlClient = postgres(connectionString, hasSslParam ? {} : { ssl: "require" });
+export const db = drizzle(sqlClient);
 
 export async function getUser(email: string): Promise<User[]> {
   try {
