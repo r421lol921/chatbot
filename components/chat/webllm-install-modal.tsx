@@ -133,7 +133,7 @@ export function WebLLMInstallModal({ open, onClose, onActivate }: Props) {
           <div className="mx-6 mt-3 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2.5">
             <div>
               <p className="text-[12px] font-medium text-foreground">
-                Qwen 2.5 · 0.5B Instruct
+                Lio 1.0 500MB
               </p>
               <p className="text-[11px] text-muted-foreground">
                 INT4 quantised · MLC format

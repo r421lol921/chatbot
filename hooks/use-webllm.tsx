@@ -5,9 +5,12 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   useRef,
   type ReactNode,
 } from "react";
+
+const STORAGE_KEY = "lio-webllm-active";
 import type { MLCEngineInterface, InitProgressReport } from "@mlc-ai/web-llm";
 
 // Qwen2.5-0.5B — ~400 MB, fast, smart, runs comfortably in-browser via WebGPU
@@ -78,10 +81,22 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
   const [totalBytes, setTotalBytes] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(STORAGE_KEY) === "true";
+  });
 
   const engineRef = useRef<MLCEngineInterface | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // On mount: if the user had on-device mode active, auto-load the model
+  useEffect(() => {
+    if (isActive) {
+      loadModel();
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const checkSupport = useCallback((): boolean => {
     if (typeof window === "undefined") return false;
@@ -203,10 +218,20 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
     setProgress(0);
     setProgressText("");
     setIsActive(false);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }, []);
 
   const setActive = useCallback((active: boolean) => {
     setIsActive(active);
+    if (typeof window !== "undefined") {
+      if (active) {
+        localStorage.setItem(STORAGE_KEY, "true");
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
   }, []);
 
   return (
