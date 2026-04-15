@@ -200,15 +200,20 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
+        const reasoningId = generateId();
+        const messageId = generateId();
+
         // Simulate thinking animation with reasoning block
         dataStream.write({
           type: "reasoning-start",
+          id: reasoningId,
         });
 
         const thinkingText = "thinking...";
         for (const char of thinkingText) {
           dataStream.write({
             type: "reasoning-delta",
+            id: reasoningId,
             reasoning: char,
           });
           await new Promise((resolve) => setTimeout(resolve, 30));
@@ -216,6 +221,7 @@ export async function POST(request: Request) {
 
         dataStream.write({
           type: "reasoning-end",
+          id: reasoningId,
         });
 
         // Random delay between 1-3 seconds
@@ -229,11 +235,13 @@ export async function POST(request: Request) {
         // Stream the response character by character for effect
         dataStream.write({
           type: "text-start",
+          id: messageId,
         });
 
         for (const char of randomResponse) {
           dataStream.write({
             type: "text-delta",
+            id: messageId,
             text: char,
           });
           await new Promise((resolve) => setTimeout(resolve, 50));
@@ -241,10 +249,10 @@ export async function POST(request: Request) {
 
         dataStream.write({
           type: "text-end",
+          id: messageId,
         });
 
         // Write the complete message
-        const messageId = generateId();
         dataStream.write({
           type: "message",
           message: {
