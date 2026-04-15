@@ -345,10 +345,9 @@ export async function POST(request: Request) {
       },
       onError: (error) => {
         console.error("[v0] chat stream error:", error);
-        // Return undefined so the SDK does not inject an error text-part
-        // into the finished messages — the HTTP status code already surfaces
-        // rate-limit / auth errors to the client via ChatbotError.toResponse().
-        return undefined;
+        // Return empty string so the SDK injects no visible error text-part
+        // into the finished message stream.
+        return "";
       },
     });
 
