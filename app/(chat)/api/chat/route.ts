@@ -235,7 +235,7 @@ export async function POST(request: Request) {
         if (intent.type === "weather" && intent.location) {
           const toolCallId = generateId();
           dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getWeather" });
-          dataStream.write({ type: "tool-input-delta", toolCallId, delta: JSON.stringify({ city: intent.location }) });
+          dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ city: intent.location }) });
           dataStream.write({ type: "tool-input-end", toolCallId });
 
           try {
@@ -263,7 +263,7 @@ export async function POST(request: Request) {
         } else if (intent.type === "map" && intent.location) {
           const toolCallId = generateId();
           dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getMap" });
-          dataStream.write({ type: "tool-input-delta", toolCallId, delta: JSON.stringify({ query: intent.location }) });
+          dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ query: intent.location }) });
           dataStream.write({ type: "tool-input-end", toolCallId });
 
           try {
