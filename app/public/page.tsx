@@ -164,7 +164,7 @@ export default function PublicChatsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/public-chats");
+      const res = await fetch("/api/public-chats", { cache: "no-store" });
       const data = await res.json();
       setChats(data.chats ?? []);
       setTotalViews(data.totalViews ?? 0);
