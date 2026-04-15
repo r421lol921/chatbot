@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   CheckIcon,
-  CreditCardIcon,
   MailIcon,
   XIcon,
 } from "lucide-react";
@@ -54,6 +53,20 @@ export default function PlansPage() {
         </Link>
       </div>
 
+      {/* Navigation Links */}
+      <div className="mb-8 w-full max-w-3xl flex items-center justify-center gap-4">
+        <Link
+          href="/models"
+          className="text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Models
+        </Link>
+        <div className="w-1 h-1 rounded-full bg-border" />
+        <span className="text-[13px] font-medium text-foreground">
+          Plans
+        </span>
+      </div>
+
       {/* Header */}
       <div className="mb-12 text-center">
         <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
@@ -97,9 +110,9 @@ export default function PlansPage() {
           <div className="mt-8">
             <Link
               href="/"
-              className="flex h-9 w-full items-center justify-center rounded-xl border border-border/60 bg-background text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+              className="flex h-9 w-full items-center justify-center rounded-xl border border-border/60 bg-background text-[13px] font-medium text-foreground transition-all hover:bg-muted"
             >
-              Start for free
+              Get Started
             </Link>
           </div>
         </motion.div>
@@ -141,16 +154,23 @@ export default function PlansPage() {
           </ul>
 
           <div className="mt-6 flex flex-col gap-3">
-            {/* Purchase Button */}
+            {/* Primary Action Button */}
             <a
               href="https://cash.app/$itslucidpp/5"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-[13px] font-semibold text-white transition-all hover:shadow-lg hover:scale-105 active:scale-95"
+              className="flex h-9 w-full items-center justify-center rounded-xl bg-foreground text-background text-[13px] font-semibold transition-all hover:bg-foreground/90 active:scale-95"
             >
-              <CreditCardIcon className="size-4" />
-              Purchase on CashApp
+              Upgrade to Plus
             </a>
+
+            {/* Secondary Action Button */}
+            <Link
+              href="/models"
+              className="flex h-9 w-full items-center justify-center rounded-xl border border-border/60 bg-background text-foreground text-[13px] font-medium transition-all hover:bg-muted"
+            >
+              View Models
+            </Link>
 
             {/* Support Info */}
             <div className="rounded-xl border border-border/50 bg-muted/40 p-4">

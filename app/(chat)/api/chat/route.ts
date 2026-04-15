@@ -329,7 +329,10 @@ export async function POST(request: Request) {
       return error.toResponse();
     }
 
-    console.error("Unhandled error in chat API:", error);
+    console.error("[v0] chat API error:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return new ChatbotError("offline:chat").toResponse();
   }
 }
