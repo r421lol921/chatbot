@@ -681,6 +681,19 @@ const responses: Record<MessageCategory, string[]> = {
     "Tell me about it. What's driving you crazy?",
   ],
 
+  gibberish: [
+    "I stared at that for a while and I'm still not sure what happened. Can you rephrase?",
+    "My brain — all zero neurons of it — could not parse that. Try again?",
+    "That's a sentence. I think. What did you mean?",
+    "I understood approximately none of that. Can you say it differently?",
+    "Error 404: meaning not found. Want to try again?",
+    "I read that three times and I'm more confused each time. What's up?",
+    "Either I'm having a moment or you are. Could you rephrase that?",
+    "I'm going to need a translation. What were you going for?",
+    "My language model went 'huh?' on that one. Try again?",
+    "That's a creative combination of words. What do you actually need?",
+  ],
+
   generic: [
     "That's an interesting one. Tell me more and I'll do my best to help.",
     "Hmm, say more. I want to make sure I give you a useful response.",
