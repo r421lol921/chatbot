@@ -151,6 +151,11 @@ export function ChatShell() {
   // Combined status
   const effectiveStatus = useLocalChat ? localStatus : status;
 
+  // Wrap stopGeneration so it matches the () => Promise<void> signature
+  const localStop = useCallback(async () => {
+    webllm.stopGeneration();
+  }, [webllm]);
+
   const stopRef = useRef(stop);
   stopRef.current = stop;
 
@@ -240,7 +245,7 @@ export function ChatShell() {
                   setInput={setInput}
                   setMessages={setMessages}
                   status={effectiveStatus}
-                  stop={useLocalChat ? webllm.stopGeneration : stop}
+                  stop={useLocalChat ? localStop : stop}
                 />
               )}
               </div>
@@ -263,7 +268,7 @@ export function ChatShell() {
           setInput={setInput}
           setMessages={setMessages}
           status={effectiveStatus}
-          stop={useLocalChat ? webllm.stopGeneration : stop}
+          stop={useLocalChat ? localStop : stop}
           votes={votes}
         />
       </div>
