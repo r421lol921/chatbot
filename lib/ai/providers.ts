@@ -4,22 +4,27 @@ import type { LanguageModel } from "ai";
 import { customProvider } from "ai";
 import { isTestEnvironment } from "../constants";
 
-// Groq API configuration for llama-3.1-8b-instant
+// Groq API configuration
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-
 const groqProvider = GROQ_API_KEY ? createGroq({ apiKey: GROQ_API_KEY }) : null;
 
-// Fallback to Together.ai if Groq is not configured
-const Z_AI_API_KEY =
-  process.env.Z_AI_API_KEY ||
-  "7f9efab132334204a7a71954b0c8ecf8.OJ71uTZuAn7GgSKK";
-const Z_AI_BASE_URL =
-  process.env.Z_AI_API_URL || "https://api.together.xyz/v1";
-
-const togetherProvider = createOpenAI({
-  apiKey: Z_AI_API_KEY,
-  baseURL: Z_AI_BASE_URL,
+// Vercel AI Gateway (zero-config when AI_GATEWAY_API_KEY is set)
+const gatewayProvider = createOpenAI({
+  baseURL: "https://ai-gateway.vercel.sh/v1",
+  apiKey: process.env.AI_GATEWAY_API_KEY ?? "",
 });
+
+// Fallback to Together.ai if neither Groq nor AI Gateway is configured
+const togetherProvider = createOpenAI({
+  apiKey: process.env.Z_AI_API_KEY ?? "",
+  baseURL: process.env.Z_AI_API_URL ?? "https://api.together.xyz/v1",
+});
+
+function getDefaultProvider() {
+  if (process.env.AI_GATEWAY_API_KEY) return gatewayProvider;
+  if (process.env.Z_AI_API_KEY) return togetherProvider;
+  return gatewayProvider;
+}
 
 // Mock provider for test environment
 const mockProvider = isTestEnvironment
@@ -43,25 +48,26 @@ export function getLanguageModel(modelId: string): LanguageModel {
   if (isTestEnvironment && mockProvider) {
     return mockProvider.languageModel("chat-model");
   }
-  
-  // Use Groq for llama-3.1-8b-instant if configured
-  if (groqProvider && modelId === "lio-1") {
+
+  // Use Groq if configured
+  if (groqProvider) {
     return groqProvider("llama-3.1-8b-instant");
   }
-  
-  // Fallback to Together.ai
-  return togetherProvider("meta-llama/llama-3.3-70b-instruct");
+
+  // Use AI Gateway or Together.ai fallback
+  return getDefaultProvider()("meta-llama/llama-3.3-70b-instruct");
 }
 
 export function getTitleModel(): LanguageModel {
   if (isTestEnvironment && mockProvider) {
     return mockProvider.languageModel("title-model");
   }
-  
-  // Use Groq for title generation if available
+
+  // Use Groq if configured
   if (groqProvider) {
     return groqProvider("llama-3.1-8b-instant");
   }
-  
-  return togetherProvider("meta-llama/llama-3.3-70b-instruct");
+
+  // Use AI Gateway or Together.ai fallback
+  return getDefaultProvider()("meta-llama/llama-3.3-70b-instruct");
 }
