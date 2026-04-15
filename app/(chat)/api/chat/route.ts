@@ -35,6 +35,7 @@ import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
+import { generateSmartResponse, generateThinkingText } from "@/lib/ai/smart-responses";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
@@ -183,19 +184,17 @@ export async function POST(request: Request) {
     const modelCapabilities = await getCapabilities();
     const capabilities = modelCapabilities[chatModel];
 
-    // Dummy/annoying AI responses
-    const dummyResponses = [
-      "bruh why r u asking me this lol",
-      "idk man that's like... hard",
-      "have u tried turning it off and on again?",
-      "i have no idea what ur talking about 💀",
-      "nah fr fr that aint it chief",
-      "can't help u with this one boss",
-      "this is actually impossible im out",
-      "skill issue if u ask me",
-      "is this a test cuz i'm failing",
-      "bro just google it",
-    ];
+    // Extract the raw user message text for the smart response engine
+    const userMessageText = (() => {
+      if (message?.parts) {
+        return message.parts
+          .filter((p: Record<string, unknown>) => p.type === "text")
+          .map((p: Record<string, unknown>) => String(p.text ?? ""))
+          .join(" ")
+          .trim();
+      }
+      return "";
+    })();
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
@@ -203,20 +202,22 @@ export async function POST(request: Request) {
         const reasoningId = generateId();
         const messageId = generateId();
 
+        // Generate contextual thinking text based on the message
+        const thinkingText = generateThinkingText(userMessageText);
+
         // Simulate thinking animation with reasoning block
         dataStream.write({
           type: "reasoning-start",
           id: reasoningId,
         });
 
-        const thinkingText = "thinking...";
         for (const char of thinkingText) {
           dataStream.write({
             type: "reasoning-delta",
             id: reasoningId,
             delta: char,
           });
-          await new Promise((resolve) => setTimeout(resolve, 30));
+          await new Promise((resolve) => setTimeout(resolve, 28));
         }
 
         dataStream.write({
@@ -224,27 +225,27 @@ export async function POST(request: Request) {
           id: reasoningId,
         });
 
-        // Random delay between 1-3 seconds
+        // Slightly shorter delay so it feels snappy but still natural
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.random() * 2000 + 1000)
+          setTimeout(resolve, Math.random() * 1200 + 600)
         );
 
-        const randomResponse =
-          dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+        // Generate a smart, contextual response
+        const smartResponse = generateSmartResponse(userMessageText);
 
-        // Stream the response character by character for effect
+        // Stream the response character by character for the typing effect
         dataStream.write({
           type: "text-start",
           id: messageId,
         });
 
-        for (const char of randomResponse) {
+        for (const char of smartResponse) {
           dataStream.write({
             type: "text-delta",
             id: messageId,
             delta: char,
           });
-          await new Promise((resolve) => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 40));
         }
 
         dataStream.write({
