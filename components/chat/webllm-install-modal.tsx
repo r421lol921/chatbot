@@ -15,7 +15,7 @@ const MODEL_SPECS = [
   {
     icon: HardDrive,
     label: "Model size",
-    value: "~380 MB",
+    value: "~400 MB",
   },
   {
     icon: Cpu,
@@ -230,7 +230,7 @@ export function WebLLMInstallModal({ open, onClose, onActivate }: Props) {
             <p className="text-center text-[11px] text-muted-foreground leading-relaxed">
               Requires Chrome 113+ or Edge 113+ with WebGPU enabled.
               {!isLoading && !isReady && (
-                <> ~380 MB, downloaded once and cached in your browser.</>
+                <> ~400 MB, downloaded once and cached in your browser.</>
               )}
             </p>
           </div>
