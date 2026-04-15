@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   CheckIcon,
-  MailIcon,
   XIcon,
 } from "lucide-react";
 
@@ -120,18 +119,12 @@ export default function PlansPage() {
         {/* PeytO Plus */}
         <motion.div
           animate={{ opacity: 1, y: 0 }}
-          className="relative flex flex-col rounded-2xl border border-border/60 bg-card p-7 shadow-[var(--shadow-float)] overflow-hidden"
+          className="relative flex flex-col rounded-2xl border border-border/60 bg-card p-7 shadow-[var(--shadow-float)]"
           initial={{ opacity: 0, y: 10 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          {/* Animated shimmer border accent */}
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-[2px] plus-badge-bg"
-            aria-hidden="true"
-          />
-
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] plus-badge">
-            One-time &bull; $5.00
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Premium
           </div>
           <h2 className="text-xl font-bold text-foreground">PeytO Plus</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
@@ -154,40 +147,21 @@ export default function PlansPage() {
           </ul>
 
           <div className="mt-6 flex flex-col gap-3">
-            {/* Primary Action Button */}
             <a
-              href="https://cash.app/$itslucidpp/5"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="tel:6162658048"
               className="flex h-9 w-full items-center justify-center rounded-xl bg-foreground text-background text-[13px] font-semibold transition-all hover:bg-foreground/90 active:scale-95"
             >
-              Upgrade to Plus
+              Contact to Upgrade
             </a>
 
-            {/* Secondary Action Button */}
-            <Link
-              href="/models"
-              className="flex h-9 w-full items-center justify-center rounded-xl border border-border/60 bg-background text-foreground text-[13px] font-medium transition-all hover:bg-muted"
-            >
-              View Models
-            </Link>
-
-            {/* Support Info */}
             <div className="rounded-xl border border-border/50 bg-muted/40 p-4">
-              <p className="text-[12px] text-center text-muted-foreground mb-2">
-                Send <span className="font-bold text-foreground">$5.00</span> to:
-              </p>
-              <p className="text-center font-mono text-base font-bold plus-badge">
-                $itslucidpp
+              <p className="text-center font-mono text-sm font-bold text-foreground">
+                616-265-8048
               </p>
               <p className="text-[11px] text-center text-muted-foreground mt-1">
-                on CashApp &mdash; one-time, no subscription
+                After payment, contact support with your receipt to activate Plus.
               </p>
             </div>
-
-            <p className="text-[11px] text-center text-muted-foreground">
-              After payment, contact support with your receipt to activate Plus.
-            </p>
           </div>
         </motion.div>
       </div>
@@ -213,35 +187,41 @@ export default function PlansPage() {
             </button>
 
             <div className="flex items-start gap-3 mb-4">
-              <div className="mt-1">
-                <MailIcon className="size-5 text-foreground" />
-              </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-foreground">
                   Need Support?
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Email us if you have questions or issues.
+                  Contact us by phone or email for questions and Plus activation.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl bg-muted/50 p-4 mb-4">
-              <p className="text-[12px] text-muted-foreground mb-1">
-                Send an email to:
-              </p>
-              <p className="text-center font-mono text-sm font-bold text-foreground">
-                peytotoria.com@gmail.com
-              </p>
+            <div className="rounded-xl bg-muted/50 p-4 mb-4 flex flex-col gap-3">
+              <div>
+                <p className="text-[12px] text-muted-foreground mb-1">
+                  Call or text:
+                </p>
+                <p className="text-center font-mono text-sm font-bold text-foreground">
+                  616-265-8048
+                </p>
+              </div>
+              <div className="border-t border-border/40 pt-3">
+                <p className="text-[12px] text-muted-foreground mb-1">
+                  Email:
+                </p>
+                <p className="text-center font-mono text-sm font-bold text-foreground">
+                  peytotoria.com@gmail.com
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-2">
               <a
-                href="mailto:peytotoria.com@gmail.com"
+                href="tel:6162658048"
                 className="flex-1 flex items-center justify-center gap-2 h-9 rounded-lg bg-foreground text-background text-[13px] font-medium transition-colors hover:opacity-90"
               >
-                <MailIcon className="size-4" />
-                Email Support
+                Call Support
               </a>
               <button
                 onClick={() => setShowEmailModal(false)}

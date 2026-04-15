@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+import type { UserType } from "@/app/(auth)/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,10 +30,39 @@ function emailToHue(email: string): number {
   return Math.abs(hash) % 360;
 }
 
+function UserTypeBadge({ userType, resolvedTheme }: { userType: UserType; resolvedTheme?: string }) {
+  const isPlus = userType === "plus";
+  const isDark = resolvedTheme === "dark";
+
+  if (isPlus) {
+    return (
+      <span
+        className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wide leading-none"
+        style={
+          isDark
+            ? { background: "#fff", color: "#000" }
+            : { background: "#000", color: "#fff" }
+        }
+      >
+        Plus
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-semibold tracking-wide leading-none text-muted-foreground border-border/60"
+    >
+      Basic
+    </span>
+  );
+}
+
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
+  const userType: UserType = (data?.user as { type?: UserType })?.type ?? "regular";
 
   const isGuest = guestRegex.test(data?.user?.email ?? "");
 
@@ -67,6 +97,9 @@ export function SidebarUserNav({ user }: { user: User }) {
                 <span className="truncate text-[13px]" data-testid="user-email">
                   {isGuest ? "Guest" : user?.email}
                 </span>
+                {!isGuest && (
+                  <UserTypeBadge resolvedTheme={resolvedTheme} userType={userType} />
+                )}
                 <ChevronUp className="ml-auto size-3.5 text-sidebar-foreground/50" />
               </SidebarMenuButton>
             )}

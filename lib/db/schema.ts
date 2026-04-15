@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
@@ -19,9 +20,12 @@ export const user = pgTable("User", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAnonymous: boolean("isAnonymous").notNull().default(false),
+  userType: varchar("userType", { length: 20 }).notNull().default("regular"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
+
+
 
 export type User = InferSelectModel<typeof user>;
 
@@ -35,9 +39,19 @@ export const chat = pgTable("Chat", {
   visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
+  viewCount: integer("viewCount").notNull().default(0),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
+
+export const chatView = pgTable("ChatView", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  chatId: uuid("chatId").notNull().references(() => chat.id, { onDelete: "cascade" }),
+  viewedAt: timestamp("viewedAt").notNull().defaultNow(),
+  visitorId: varchar("visitorId", { length: 64 }),
+});
+
+export type ChatView = InferSelectModel<typeof chatView>;
 
 export const message = pgTable("Message_v2", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

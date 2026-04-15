@@ -24,6 +24,23 @@ async function geocodeLocation(query: string): Promise<{
   }
 }
 
+export async function executeGetMap(input: { query: string; zoom?: number }) {
+  const { query, zoom = 13 } = input;
+  const result = await geocodeLocation(query);
+  if (!result) {
+    return { error: `Could not find a location for "${query}". Try being more specific.` };
+  }
+  return {
+    latitude: result.latitude,
+    longitude: result.longitude,
+    displayName: result.displayName,
+    query,
+    zoom,
+    embedUrl: `https://www.openstreetmap.org/export/embed.html?bbox=${result.longitude - 0.03},${result.latitude - 0.02},${result.longitude + 0.03},${result.latitude + 0.02}&layer=mapnik&marker=${result.latitude},${result.longitude}`,
+    linkUrl: `https://www.openstreetmap.org/?mlat=${result.latitude}&mlon=${result.longitude}#map=${zoom}/${result.latitude}/${result.longitude}`,
+  };
+}
+
 export const getMap = tool({
   description:
     "Show an interactive map for a location. Use this when the user asks to see a map, directions, or wants to find places nearby.",

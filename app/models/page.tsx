@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { SparklesIcon } from "lucide-react";
 
 export default function ModelsPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -80,16 +79,13 @@ export default function ModelsPage() {
             transition={{ delay: model.delay, duration: 0.4 }}
           >
             {/* Header */}
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">
-                  {model.name}
-                </h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  {model.description}
-                </p>
-              </div>
-              <SparklesIcon className="size-5 text-foreground/50 mt-1 ml-2" />
+            <div className="mb-2">
+              <h2 className="text-xl font-bold text-foreground">
+                {model.name}
+              </h2>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                {model.description}
+              </p>
             </div>
 
             {/* Usage Stats */}

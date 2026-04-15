@@ -155,11 +155,16 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     },
     onError: (error) => {
       if (error instanceof ChatbotError) {
-        toast({ type: "error", description: error.message });
-      } else {
+        // Only show toasts for user-facing surfaces (not database internals)
+        if (error.surface !== "database") {
+          toast({ type: "error", description: error.message });
+        }
+      } else if (error?.message && !error.message.includes("aborted")) {
+        // Suppress abort-related non-errors (e.g. user clicked Stop or
+        // navigated away mid-stream) and empty messages.
         toast({
           type: "error",
-          description: error.message || "Oops, an error occurred!",
+          description: error.message,
         });
       }
     },

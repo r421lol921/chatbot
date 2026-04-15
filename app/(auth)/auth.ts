@@ -3,7 +3,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type { DefaultJWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { DUMMY_PASSWORD } from "@/lib/constants";
-import { createGuestUser, getUser } from "@/lib/db/queries";
+import { createGuestUser, getUser, getUserById } from "@/lib/db/queries";
 import { authConfig } from "./auth.config";
 
 export type UserType = "guest" | "regular" | "plus";
@@ -66,7 +66,8 @@ export const {
           return null;
         }
 
-        return { ...user, type: "regular" };
+        const dbUserType = (user.userType as UserType) ?? "regular";
+        return { ...user, type: dbUserType };
       },
     }),
     Credentials({
@@ -79,10 +80,23 @@ export const {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
         token.type = user.type;
+      }
+
+      // Re-read userType from DB on each token refresh so Plus changes
+      // granted by admin take effect without requiring a new login.
+      if (token.id && token.type !== "guest") {
+        try {
+          const freshUser = await getUserById({ id: token.id });
+          if (freshUser?.userType) {
+            token.type = freshUser.userType as UserType;
+          }
+        } catch {
+          // Silently fall back to existing token type
+        }
       }
 
       return token;

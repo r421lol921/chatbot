@@ -35,6 +35,9 @@ import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
+import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse } from "@/lib/ai/smart-responses";
+import { executeGetWeather } from "@/lib/ai/tools/get-weather";
+import { executeGetMap } from "@/lib/ai/tools/get-map";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
@@ -152,15 +155,12 @@ export async function POST(request: Request) {
     // Check rate limit BEFORE saving the message so the saved message
     // doesn't immediately count against the user on the very same request.
     if (!isToolApprovalFlow) {
-      const lastMessageTime = await getLastUserMessageTime({
-        userId: session.user.id,
+      const messageCount = await getMessageCountByUserId({
+        id: session.user.id,
+        differenceInHours: entitlements.messageIntervalHours,
       });
-      if (lastMessageTime) {
-        const hoursSinceLastMessage =
-          (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLastMessage < entitlements.messageIntervalHours) {
-          return new ChatbotError("rate_limit:chat").toResponse();
-        }
+      if (messageCount >= entitlements.maxMessagesPerHour) {
+        return new ChatbotError("rate_limit:chat").toResponse();
       }
     }
 
@@ -183,19 +183,17 @@ export async function POST(request: Request) {
     const modelCapabilities = await getCapabilities();
     const capabilities = modelCapabilities[chatModel];
 
-    // Dummy/annoying AI responses
-    const dummyResponses = [
-      "bruh why r u asking me this lol",
-      "idk man that's like... hard",
-      "have u tried turning it off and on again?",
-      "i have no idea what ur talking about 💀",
-      "nah fr fr that aint it chief",
-      "can't help u with this one boss",
-      "this is actually impossible im out",
-      "skill issue if u ask me",
-      "is this a test cuz i'm failing",
-      "bro just google it",
-    ];
+    // Extract the raw user message text for the smart response engine
+    const userMessageText = (() => {
+      if (message?.parts) {
+        return message.parts
+          .filter((p: Record<string, unknown>) => p.type === "text")
+          .map((p: Record<string, unknown>) => String(p.text ?? ""))
+          .join(" ")
+          .trim();
+      }
+      return "";
+    })();
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
@@ -203,20 +201,25 @@ export async function POST(request: Request) {
         const reasoningId = generateId();
         const messageId = generateId();
 
+        // Detect intent: weather, map, code, or generic text
+        const intent = detectIntent(userMessageText);
+
+        // Generate contextual thinking text based on the message
+        const thinkingText = generateThinkingText(userMessageText);
+
         // Simulate thinking animation with reasoning block
         dataStream.write({
           type: "reasoning-start",
           id: reasoningId,
         });
 
-        const thinkingText = "thinking...";
         for (const char of thinkingText) {
           dataStream.write({
             type: "reasoning-delta",
             id: reasoningId,
             delta: char,
           });
-          await new Promise((resolve) => setTimeout(resolve, 30));
+          await new Promise((resolve) => setTimeout(resolve, 28));
         }
 
         dataStream.write({
@@ -224,33 +227,77 @@ export async function POST(request: Request) {
           id: reasoningId,
         });
 
-        // Random delay between 1-3 seconds
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.random() * 2000 + 1000)
+          setTimeout(resolve, Math.random() * 800 + 400)
         );
 
-        const randomResponse =
-          dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+        // ── Weather intent ──────────────────────────────────────────────
+        if (intent.type === "weather" && intent.location) {
+          let weatherText: string;
+          try {
+            const w = await executeGetWeather({ city: intent.location }) as Record<string, unknown>;
+            if (w.error) {
+              weatherText = `Hmm, I couldn't find weather data for **${intent.location}**. Double-check the city name and try again!`;
+            } else {
+              const current = (w.current ?? {}) as Record<string, unknown>;
+              const temp = current.temperature_2m;
+              const units = (w.current_units ?? {}) as Record<string, unknown>;
+              const unit = units.temperature_2m ?? "°C";
+              const cityName = (w.cityName as string) || intent.location;
+              weatherText = `Here is the weather for **${cityName}**:\n\n- **Temperature:** ${temp}${unit}\n- **Updated:** just now\n\nLet me know if you want more details like hourly forecasts!`;
+            }
+          } catch {
+            weatherText = `I tried fetching the weather for **${intent.location}** but hit a snag. Try again in a moment!`;
+          }
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of weatherText) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 30));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
 
-        // Stream the response character by character for effect
-        dataStream.write({
-          type: "text-start",
-          id: messageId,
-        });
+        // ── Map intent ─────────────────────────────────────────────────
+        } else if (intent.type === "map" && intent.location) {
+          let mapText: string;
+          try {
+            const m = await executeGetMap({ query: intent.location, zoom: 13 }) as Record<string, unknown>;
+            if (m.error) {
+              mapText = `I couldn't find a map for **${intent.location}**. Try a more specific location name!`;
+            } else {
+              const displayName = (m.displayName as string) || intent.location;
+              const linkUrl = m.linkUrl as string;
+              mapText = `Here is a map for **${displayName}**:\n\n[Open in OpenStreetMap](${linkUrl})\n\nCoordinates: **${(m.latitude as number).toFixed(4)}, ${(m.longitude as number).toFixed(4)}**`;
+            }
+          } catch {
+            mapText = `Couldn't load the map for **${intent.location}** right now. Try again in a moment!`;
+          }
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of mapText) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 30));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
 
-        for (const char of randomResponse) {
-          dataStream.write({
-            type: "text-delta",
-            id: messageId,
-            delta: char,
-          });
-          await new Promise((resolve) => setTimeout(resolve, 50));
+        // ── Code generation intent ──────────────────────────────────────
+        } else if (intent.type === "code") {
+          const codeResponse = generateCodeResponse(userMessageText);
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of codeResponse) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 25));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
+
+        // ── Generic smart text response ─────────────────────────────────
+        } else {
+          const smartResponse = generateSmartResponse(userMessageText);
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of smartResponse) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((resolve) => setTimeout(resolve, 40));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
         }
-
-        dataStream.write({
-          type: "text-end",
-          id: messageId,
-        });
 
         if (titlePromise) {
           const title = await titlePromise;
@@ -298,10 +345,9 @@ export async function POST(request: Request) {
       },
       onError: (error) => {
         console.error("[v0] chat stream error:", error);
-        if (error instanceof ChatbotError) {
-          return error.message;
-        }
-        return "Something went wrong. Please try again.";
+        // Return empty string so the SDK injects no visible error text-part
+        // into the finished message stream.
+        return "";
       },
     });
 
