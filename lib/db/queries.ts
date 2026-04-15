@@ -806,6 +806,7 @@ export async function getPublicChats({ limit = 5 }: { limit?: number } = {}) {
         title: chat.title,
         createdAt: chat.createdAt,
         userId: chat.userId,
+        viewCount: chat.viewCount,
       })
       .from(chat)
       .where(eq(chat.visibility, "public"))
@@ -817,6 +818,23 @@ export async function getPublicChats({ limit = 5 }: { limit?: number } = {}) {
     return shuffled.slice(0, limit);
   } catch (_error) {
     throw new ChatbotError("bad_request:database", "Failed to get public chats");
+  }
+}
+
+export async function updateChatViewCount({
+  chatId,
+  viewCount,
+}: {
+  chatId: string;
+  viewCount: number;
+}) {
+  try {
+    await db
+      .update(chat)
+      .set({ viewCount })
+      .where(eq(chat.id, chatId));
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to update view count");
   }
 }
 

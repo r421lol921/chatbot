@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { EyeIcon, GlobeIcon, PencilIcon, RefreshCwIcon, CheckIcon, XIcon } from "lucide-react";
 import { Odometer } from "@/components/ui/odometer";
@@ -12,18 +12,6 @@ interface PublicChat {
   viewCount: number;
 }
 
-function useVisitorId(): string {
-  const [id, setId] = useState("");
-  useEffect(() => {
-    let vid = localStorage.getItem("_vid");
-    if (!vid) {
-      vid = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem("_vid", vid);
-    }
-    setId(vid);
-  }, []);
-  return id;
-}
 
 function EditableViewCount({
   chatId,
@@ -128,19 +116,13 @@ function EditableViewCount({
   );
 }
 
-function ChatCard({
-  chat,
-  onView,
-}: {
-  chat: PublicChat;
-  onView: (id: string) => void;
-}) {
+function ChatCard({ chat }: { chat: PublicChat }) {
   const [views, setViews] = useState(chat.viewCount);
 
+  // Keep local state in sync if the parent refreshes the chat list
   useEffect(() => {
-    const t = setTimeout(() => setViews((v) => v + 1), 800);
-    return () => clearTimeout(t);
-  }, []);
+    setViews(chat.viewCount);
+  }, [chat.viewCount]);
 
   const date = new Date(chat.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -151,7 +133,6 @@ function ChatCard({
   return (
     <Link
       href={`/chat/${chat.id}`}
-      onClick={() => onView(chat.id)}
       className="group block rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-foreground/20 hover:shadow-sm"
     >
       <div className="flex items-start justify-between gap-3">
@@ -179,7 +160,6 @@ export default function PublicChatsPage() {
   const [chats, setChats] = useState<PublicChat[]>([]);
   const [totalViews, setTotalViews] = useState(0);
   const [loading, setLoading] = useState(true);
-  const visitorId = useVisitorId();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,19 +178,6 @@ export default function PublicChatsPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleView = useCallback(
-    (chatId: string) => {
-      if (!visitorId) return;
-      fetch("/api/public-chats/view", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId, visitorId }),
-      });
-      setTotalViews((v) => v + 1);
-    },
-    [visitorId]
-  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -271,7 +238,7 @@ export default function PublicChatsPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {chats.map((chat) => (
-              <ChatCard key={chat.id} chat={chat} onView={handleView} />
+              <ChatCard key={chat.id} chat={chat} />
             ))}
           </div>
         )}
