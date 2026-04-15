@@ -236,7 +236,6 @@ export async function POST(request: Request) {
           const toolCallId = generateId();
           dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getWeather" });
           dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ city: intent.location }) });
-          dataStream.write({ type: "tool-input-end", toolCallId });
 
           try {
             const weatherResult = await getWeather.execute({ city: intent.location }, { toolCallId, messages: [] });
@@ -264,7 +263,6 @@ export async function POST(request: Request) {
           const toolCallId = generateId();
           dataStream.write({ type: "tool-input-start", toolCallId, toolName: "getMap" });
           dataStream.write({ type: "tool-input-delta", toolCallId, inputTextDelta: JSON.stringify({ query: intent.location }) });
-          dataStream.write({ type: "tool-input-end", toolCallId });
 
           try {
             const mapResult = await getMap.execute({ query: intent.location, zoom: 13 }, { toolCallId, messages: [] });
