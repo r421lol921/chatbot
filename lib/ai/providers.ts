@@ -55,7 +55,7 @@ export function getLanguageModel(modelId: string): LanguageModel {
   }
 
   // Use AI Gateway or Together.ai fallback
-  return getDefaultProvider()("gpt-4o-mini");
+  return getDefaultProvider()("openai/gpt-4o-mini");
 }
 
 export function getTitleModel(): LanguageModel {
@@ -69,5 +69,5 @@ export function getTitleModel(): LanguageModel {
   }
 
   // Use AI Gateway or Together.ai fallback
-  return getDefaultProvider()("gpt-4o-mini");
+  return getDefaultProvider()("openai/gpt-4o-mini");
 }
