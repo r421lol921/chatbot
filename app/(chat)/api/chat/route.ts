@@ -1,11 +1,8 @@
 import { geolocation, ipAddress } from "@vercel/functions";
 import {
-  convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
-  stepCountIs,
-  streamText,
 } from "ai";
 import { checkBotId } from "botid/server";
 import { after } from "next/server";
@@ -18,15 +15,7 @@ import {
   DEFAULT_CHAT_MODEL,
   getCapabilities,
 } from "@/lib/ai/models";
-import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
-import { getLanguageModel } from "@/lib/ai/providers";
-import { createDocument } from "@/lib/ai/tools/create-document";
-import { editDocument } from "@/lib/ai/tools/edit-document";
-import { getMap } from "@/lib/ai/tools/get-map";
-import { getWeather } from "@/lib/ai/tools/get-weather";
-import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
-import { searchProducts } from "@/lib/ai/tools/search-products";
-import { updateDocument } from "@/lib/ai/tools/update-document";
+import { type RequestHints } from "@/lib/ai/prompts";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -193,62 +182,58 @@ export async function POST(request: Request) {
     const modelConfig = chatModels.find((m) => m.id === chatModel);
     const modelCapabilities = await getCapabilities();
     const capabilities = modelCapabilities[chatModel];
-    const isReasoningModel = capabilities?.reasoning === true;
-    const supportsTools = capabilities?.tools === true;
 
-    const modelMessages = await convertToModelMessages(uiMessages);
+    // Dummy/annoying AI responses
+    const dummyResponses = [
+      "bruh why r u asking me this lol",
+      "idk man that's like... hard",
+      "have u tried turning it off and on again?",
+      "i have no idea what ur talking about 💀",
+      "nah fr fr that aint it chief",
+      "can't help u with this one boss",
+      "this is actually impossible im out",
+      "skill issue if u ask me",
+      "is this a test cuz i'm failing",
+      "bro just google it",
+    ];
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
-        const result = streamText({
-          model: getLanguageModel(chatModel),
-          system: systemPrompt({ requestHints, supportsTools, modelId: chatModel }),
-          messages: modelMessages,
-          stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            isReasoningModel && !supportsTools
-              ? []
-              : [
-                  "getWeather",
-                  "getMap",
-                  "searchProducts",
-                  "createDocument",
-                  "editDocument",
-                  "updateDocument",
-                  "requestSuggestions",
-                ],
-          providerOptions: {},
-          tools: {
-            getWeather,
-            getMap,
-            searchProducts,
-            createDocument: createDocument({
-              session,
-              dataStream,
-              modelId: chatModel,
-            }),
-            editDocument: editDocument({ dataStream, session }),
-            updateDocument: updateDocument({
-              session,
-              dataStream,
-              modelId: chatModel,
-            }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-              modelId: chatModel,
-            }),
-          },
-          experimental_telemetry: {
-            isEnabled: isProductionEnvironment,
-            functionId: "stream-text",
-          },
+        // Simulate thinking animation
+        dataStream.write({
+          type: "step",
+          content: "thinking...",
+          stepType: "thinking",
         });
 
-        dataStream.merge(
-          result.toUIMessageStream({ sendReasoning: isReasoningModel })
+        // Random delay between 1-3 seconds
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.random() * 2000 + 1000)
         );
+
+        const randomResponse =
+          dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+
+        // Stream the response character by character for effect
+        for (const char of randomResponse) {
+          dataStream.write({
+            type: "text-delta",
+            text: char,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+
+        // Write the complete message
+        const messageId = generateId();
+        dataStream.write({
+          type: "message",
+          message: {
+            id: messageId,
+            role: "assistant",
+            content: randomResponse,
+          },
+        });
 
         if (titlePromise) {
           const title = await titlePromise;
