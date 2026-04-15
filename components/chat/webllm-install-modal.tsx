@@ -15,7 +15,7 @@ const MODEL_SPECS = [
   {
     icon: HardDrive,
     label: "Model size",
-    value: "~1.9 GB",
+    value: "~380 MB",
   },
   {
     icon: Cpu,
@@ -25,7 +25,7 @@ const MODEL_SPECS = [
   {
     icon: Zap,
     label: "Speed",
-    value: "~20 tok/s",
+    value: "~40 tok/s",
   },
   {
     icon: Shield,
@@ -133,7 +133,7 @@ export function WebLLMInstallModal({ open, onClose, onActivate }: Props) {
           <div className="mx-6 mt-3 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2.5">
             <div>
               <p className="text-[12px] font-medium text-foreground">
-                Llama 3.2 · 3B Instruct
+                Qwen 2.5 · 0.5B Instruct
               </p>
               <p className="text-[11px] text-muted-foreground">
                 INT4 quantised · MLC format
@@ -230,7 +230,7 @@ export function WebLLMInstallModal({ open, onClose, onActivate }: Props) {
             <p className="text-center text-[11px] text-muted-foreground leading-relaxed">
               Requires Chrome 113+ or Edge 113+ with WebGPU enabled.
               {!isLoading && !isReady && (
-                <> Downloaded once and cached in your browser.</>
+                <> ~380 MB, downloaded once and cached in your browser.</>
               )}
             </p>
           </div>

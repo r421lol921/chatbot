@@ -10,8 +10,8 @@ import {
 } from "react";
 import type { MLCEngineInterface, InitProgressReport } from "@mlc-ai/web-llm";
 
-// Llama-3.2-3B is a great balance of size (~1.9GB) and quality for browser inference
-const WEBLLM_MODEL_ID = "Llama-3.2-3B-Instruct-q4f16_1-MLC";
+// Qwen2.5-0.5B is fast, smart, and ~380 MB — runs comfortably in-browser
+const WEBLLM_MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
 
 // Lio 1.0 system prompt injected into every local inference request
 const LIO_SYSTEM_PROMPT = `You are Lio 1.0, developed by PeytOtoria.com developers. You are a helpful AI assistant created to assist users with various tasks. Keep responses concise and direct.

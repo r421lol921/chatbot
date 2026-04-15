@@ -737,7 +737,7 @@ function PureModelSelectorCompact({
                           ? `Downloading… ${Math.round(webllm.progress * 100)}%`
                           : isOnDevice
                           ? "Private · no internet needed"
-                          : "Private · ~1.9 GB · WebGPU"}
+                          : "Private · ~380 MB · WebGPU"}
                       </span>
                     </div>
                     {isOnDevice && (

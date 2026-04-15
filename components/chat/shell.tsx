@@ -59,7 +59,7 @@ export function ChatShell() {
       const userMessage: ChatMessage = {
         ...message,
         id: message.id || generateUUID(),
-        createdAt: new Date(),
+        metadata: { createdAt: new Date().toISOString() },
       };
       
       setMessages((prev) => [...prev, userMessage]);
@@ -71,7 +71,7 @@ export function ChatShell() {
         id: assistantId,
         role: "assistant",
         parts: [{ type: "text", text: "" }],
-        createdAt: new Date(),
+        metadata: { createdAt: new Date().toISOString() },
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
