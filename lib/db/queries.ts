@@ -277,7 +277,8 @@ export async function getMessagesByChatId({ id }: { id: string }) {
       .select()
       .from(message)
       .where(eq(message.chatId, id))
-      .orderBy(asc(message.createdAt));
+      .orderBy(asc(message.createdAt))
+      .limit(20);
   } catch (_error) {
     throw new ChatbotError(
       "bad_request:database",
