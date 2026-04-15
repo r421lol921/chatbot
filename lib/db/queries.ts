@@ -23,6 +23,7 @@ import {
   chat,
   chatMember,
   chatShare,
+  chatView,
   type DBMessage,
   document,
   message,
@@ -758,5 +759,113 @@ export async function getChatMembers({ chatId }: { chatId: string }) {
       "bad_request:database",
       "Failed to get chat members"
     );
+  }
+}
+
+export async function setUserType({
+  userId,
+  userType,
+}: {
+  userId: string;
+  userType: "regular" | "plus" | "guest";
+}) {
+  try {
+    return await db
+      .update(user)
+      .set({ userType })
+      .where(eq(user.id, userId))
+      .returning({ id: user.id, email: user.email, userType: user.userType });
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to set user type");
+  }
+}
+
+export async function getUserById({ id }: { id: string }) {
+  try {
+    const [found] = await db.select().from(user).where(eq(user.id, id));
+    return found ?? null;
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get user by id");
+  }
+}
+
+export async function getUserByEmail({ email }: { email: string }) {
+  try {
+    const [found] = await db.select().from(user).where(eq(user.email, email));
+    return found ?? null;
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get user by email");
+  }
+}
+
+export async function getPublicChats({ limit = 5 }: { limit?: number } = {}) {
+  try {
+    const publicChats = await db
+      .select({
+        id: chat.id,
+        title: chat.title,
+        createdAt: chat.createdAt,
+        userId: chat.userId,
+      })
+      .from(chat)
+      .where(eq(chat.visibility, "public"))
+      .orderBy(desc(chat.createdAt))
+      .limit(50);
+
+    // Pick random 5 from the pool
+    const shuffled = publicChats.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, limit);
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get public chats");
+  }
+}
+
+export async function getViewCountForChat({ chatId }: { chatId: string }): Promise<number> {
+  try {
+    const [result] = await db
+      .select({ count: count(chatView.id) })
+      .from(chatView)
+      .where(eq(chatView.chatId, chatId));
+    return result?.count ?? 0;
+  } catch (_error) {
+    return 0;
+  }
+}
+
+export async function getTotalPublicChatViews(): Promise<number> {
+  try {
+    const publicChatIds = await db
+      .select({ id: chat.id })
+      .from(chat)
+      .where(eq(chat.visibility, "public"));
+
+    if (publicChatIds.length === 0) return 0;
+
+    const ids = publicChatIds.map((c) => c.id);
+    const [result] = await db
+      .select({ count: count(chatView.id) })
+      .from(chatView)
+      .where(inArray(chatView.chatId, ids));
+    return result?.count ?? 0;
+  } catch (_error) {
+    return 0;
+  }
+}
+
+export async function recordChatView({
+  chatId,
+  visitorId,
+}: {
+  chatId: string;
+  visitorId?: string;
+}) {
+  try {
+    await db.insert(chatView).values({
+      chatId,
+      viewedAt: new Date(),
+      visitorId: visitorId ?? null,
+    });
+  } catch (_error) {
+    // Silent — view tracking should never break chat loading
   }
 }
