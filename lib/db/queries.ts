@@ -869,3 +869,43 @@ export async function recordChatView({
     // Silent — view tracking should never break chat loading
   }
 }
+
+export async function setViewCountForChat({
+  chatId,
+  count: targetCount,
+}: {
+  chatId: string;
+  count: number;
+}) {
+  try {
+    const current = await getViewCountForChat({ chatId });
+    const diff = targetCount - current;
+    if (diff > 0) {
+      // Add synthetic view rows to reach the target
+      const rows = Array.from({ length: diff }, () => ({
+        chatId,
+        viewedAt: new Date(),
+        visitorId: null as string | null,
+      }));
+      await db.insert(chatView).values(rows);
+    } else if (diff < 0) {
+      // Delete the most recent |diff| rows
+      const toDelete = await db
+        .select({ id: chatView.id })
+        .from(chatView)
+        .where(eq(chatView.chatId, chatId))
+        .orderBy(desc(chatView.viewedAt))
+        .limit(Math.abs(diff));
+      if (toDelete.length > 0) {
+        await db.delete(chatView).where(
+          inArray(
+            chatView.id,
+            toDelete.map((r) => r.id)
+          )
+        );
+      }
+    }
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to set view count");
+  }
+}

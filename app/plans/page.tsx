@@ -119,18 +119,12 @@ export default function PlansPage() {
         {/* PeytO Plus */}
         <motion.div
           animate={{ opacity: 1, y: 0 }}
-          className="relative flex flex-col rounded-2xl border border-border/60 bg-card p-7 shadow-[var(--shadow-float)] overflow-hidden"
+          className="relative flex flex-col rounded-2xl border border-border/60 bg-card p-7 shadow-[var(--shadow-float)]"
           initial={{ opacity: 0, y: 10 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
-          {/* Animated shimmer border accent */}
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-[2px] plus-badge-bg"
-            aria-hidden="true"
-          />
-
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] plus-badge">
-            One-time &bull; $5.00
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Premium
           </div>
           <h2 className="text-xl font-bold text-foreground">PeytO Plus</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
@@ -153,7 +147,6 @@ export default function PlansPage() {
           </ul>
 
           <div className="mt-6 flex flex-col gap-3">
-            {/* Primary Action Button */}
             <a
               href="tel:6162658048"
               className="flex h-9 w-full items-center justify-center rounded-xl bg-foreground text-background text-[13px] font-semibold transition-all hover:bg-foreground/90 active:scale-95"
@@ -161,27 +154,12 @@ export default function PlansPage() {
               Contact to Upgrade
             </a>
 
-            {/* Secondary Action Button */}
-            <Link
-              href="/models"
-              className="flex h-9 w-full items-center justify-center rounded-xl border border-border/60 bg-background text-foreground text-[13px] font-medium transition-all hover:bg-muted"
-            >
-              View Models
-            </Link>
-
-            <p className="text-[11px] text-center text-muted-foreground">
-              After payment, contact support with your receipt to activate Plus.
-            </p>
-
             <div className="rounded-xl border border-border/50 bg-muted/40 p-4">
-              <p className="text-[12px] text-center text-muted-foreground mb-1">
-                Support &amp; Upgrades
-              </p>
               <p className="text-center font-mono text-sm font-bold text-foreground">
                 616-265-8048
               </p>
               <p className="text-[11px] text-center text-muted-foreground mt-1">
-                Call or text to activate your Plus subscription
+                After payment, contact support with your receipt to activate Plus.
               </p>
             </div>
           </div>

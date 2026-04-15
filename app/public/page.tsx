@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { EyeIcon, GlobeIcon, RefreshCwIcon } from "lucide-react";
+import { EyeIcon, GlobeIcon, PencilIcon, RefreshCwIcon, CheckIcon, XIcon } from "lucide-react";
 import { Odometer } from "@/components/ui/odometer";
 
 interface PublicChat {
@@ -25,10 +25,118 @@ function useVisitorId(): string {
   return id;
 }
 
-function ChatCard({ chat, onView }: { chat: PublicChat; onView: (id: string) => void }) {
+function EditableViewCount({
+  chatId,
+  initialValue,
+  className,
+  onSaved,
+}: {
+  chatId: string | null;
+  initialValue: number;
+  className?: string;
+  onSaved?: (newValue: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState(String(initialValue));
+  const [saving, setSaving] = useState(false);
+  const [display, setDisplay] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDisplay(initialValue);
+    setInputVal(String(initialValue));
+  }, [initialValue]);
+
+  const startEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setInputVal(String(display));
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  };
+
+  const cancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditing(false);
+  };
+
+  const save = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const n = parseInt(inputVal, 10);
+    if (isNaN(n) || n < 0) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const endpoint = chatId
+        ? "/api/admin/set-view-count"
+        : "/api/admin/set-total-views";
+      await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(chatId ? { chatId, count: n } : { count: n }),
+      });
+      setDisplay(n);
+      onSaved?.(n);
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          type="number"
+          min={0}
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save(e as unknown as React.MouseEvent);
+            if (e.key === "Escape") setEditing(false);
+          }}
+          className={`w-20 rounded border border-border bg-background px-1.5 py-0.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-foreground/30 ${className}`}
+        />
+        <button onClick={save} disabled={saving} className="text-foreground/70 hover:text-foreground">
+          <CheckIcon className="size-3" />
+        </button>
+        <button onClick={cancel} className="text-muted-foreground hover:text-foreground">
+          <XIcon className="size-3" />
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <span className="group/edit flex items-center gap-1">
+      <Odometer value={display} className={className} />
+      <button
+        onClick={startEdit}
+        className="opacity-0 group-hover/edit:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+        title="Edit view count"
+      >
+        <PencilIcon className="size-2.5" />
+      </button>
+    </span>
+  );
+}
+
+function ChatCard({
+  chat,
+  onView,
+}: {
+  chat: PublicChat;
+  onView: (id: string) => void;
+}) {
   const [views, setViews] = useState(chat.viewCount);
 
-  // Simulate a tick-up when mounted (reflects the new view being counted)
   useEffect(() => {
     const t = setTimeout(() => setViews((v) => v + 1), 800);
     return () => clearTimeout(t);
@@ -55,7 +163,12 @@ function ChatCard({ chat, onView }: { chat: PublicChat; onView: (id: string) => 
         </div>
         <div className="shrink-0 flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1">
           <EyeIcon className="size-3 text-muted-foreground" />
-          <Odometer value={views} className="text-[11px] text-muted-foreground" />
+          <EditableViewCount
+            chatId={chat.id}
+            initialValue={views}
+            onSaved={setViews}
+            className="text-[11px] text-muted-foreground"
+          />
         </div>
       </div>
     </Link>
@@ -128,8 +241,10 @@ export default function PublicChatsPage() {
             Total views across all public chats
           </p>
           <div className="flex items-baseline gap-1">
-            <Odometer
-              value={totalViews}
+            <EditableViewCount
+              chatId={null}
+              initialValue={totalViews}
+              onSaved={setTotalViews}
               className="text-3xl font-bold text-foreground"
             />
             <span className="text-[12px] text-muted-foreground ml-1">views</span>
