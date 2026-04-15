@@ -40,6 +40,13 @@ export const chatModels: ChatModel[] = [
     locked: true,
     requiresPlus: true,
   },
+  {
+    id: "local-smollm",
+    name: "SmolLM Local",
+    provider: "webllm",
+    description: "SmolLM2 — runs entirely in your browser via WebGPU",
+    locked: false,
+  },
 ];
 
 export async function getCapabilities(): Promise<
@@ -48,7 +55,12 @@ export async function getCapabilities(): Promise<
   return {
     "lio-1": { tools: true, vision: false, reasoning: false },
     "lio-2": { tools: true, vision: true, reasoning: true },
+    "local-smollm": { tools: false, vision: false, reasoning: false },
   };
+}
+
+export function isLocalModel(modelId: string): boolean {
+  return modelId === "local-smollm";
 }
 
 export const isDemo = process.env.IS_DEMO === "1";

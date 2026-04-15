@@ -19,10 +19,11 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
-import { chatModels, PEYTO_PLUS_INFO } from "@/lib/ai/models";
+import { chatModels, PEYTO_PLUS_INFO, isLocalModel } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
+import { useWebLLM } from "@/hooks/use-webllm";
 import { cn } from "@/lib/utils";
-import { LockIcon } from "lucide-react";
+import { LockIcon, Cpu, Loader2, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -630,6 +631,11 @@ function PureModelSelectorCompact({
   const selectedModel =
     chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
   const [showPlusModal, setShowPlusModal] = useState(false);
+  const webllm = useWebLLM();
+  
+  const isLocalSelected = isLocalModel(selectedModelId);
+  const isWebLLMReady = webllm.status === "ready" || webllm.status === "generating";
+  const isWebLLMLoading = webllm.status === "loading";
 
   return (
     <>
@@ -640,6 +646,12 @@ function PureModelSelectorCompact({
             data-testid="model-selector"
             type="button"
           >
+            {isLocalSelected && isWebLLMReady && (
+              <Cpu className="size-3 text-green-500" />
+            )}
+            {isLocalSelected && isWebLLMLoading && (
+              <Loader2 className="size-3 animate-spin" />
+            )}
             {selectedModel.name}
             <svg
               className="size-3 opacity-60"
@@ -653,40 +665,66 @@ function PureModelSelectorCompact({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[200px]" side="top">
-          {chatModels.map((model) => (
-            <DropdownMenuItem
-              key={model.id}
-              className={cn(
-                "flex items-center gap-2 py-2 group",
-                model.locked && "cursor-not-allowed opacity-70"
-              )}
-              onSelect={(e) => {
-                if (model.locked) {
-                  e.preventDefault();
-                  setShowPlusModal(true);
-                } else {
-                  onModelChange?.(model.id);
-                }
-              }}
-            >
-              <div className="flex flex-col items-start gap-0.5 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[13px] font-medium">{model.name}</span>
-                  {model.locked && (
-                    <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
-                  )}
-                  {model.requiresPlus && (
-                    <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
-                      PLUS
-                    </span>
-                  )}
+          {chatModels.map((model) => {
+            const isLocal = isLocalModel(model.id);
+            const needsLoad = isLocal && webllm.status === "idle";
+            const isLoading = isLocal && webllm.status === "loading";
+            
+            return (
+              <DropdownMenuItem
+                key={model.id}
+                className={cn(
+                  "flex items-center gap-2 py-2 group",
+                  model.locked && "cursor-not-allowed opacity-70"
+                )}
+                onSelect={(e) => {
+                  if (model.locked) {
+                    e.preventDefault();
+                    setShowPlusModal(true);
+                  } else if (isLocal && needsLoad) {
+                    e.preventDefault();
+                    webllm.loadModel();
+                    onModelChange?.(model.id);
+                  } else {
+                    onModelChange?.(model.id);
+                  }
+                }}
+              >
+                <div className="flex flex-col items-start gap-0.5 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    {isLocal && (
+                      isLoading ? (
+                        <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                      ) : webllm.status === "ready" || webllm.status === "generating" ? (
+                        <Cpu className="size-3 text-green-500" />
+                      ) : (
+                        <Download className="size-3 text-muted-foreground" />
+                      )
+                    )}
+                    <span className="text-[13px] font-medium">{model.name}</span>
+                    {model.locked && (
+                      <LockIcon className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                    )}
+                    {model.requiresPlus && (
+                      <span className="text-[9px] font-semibold plus-badge-bg text-white px-1.5 py-0.5 rounded-full">
+                        PLUS
+                      </span>
+                    )}
+                    {isLocal && (
+                      <span className="text-[9px] font-semibold bg-blue-500/20 text-blue-500 px-1.5 py-0.5 rounded-full">
+                        LOCAL
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    {isLocal && isLoading 
+                      ? `Loading... ${Math.round(webllm.progress * 100)}%`
+                      : model.description}
+                  </span>
                 </div>
-                <span className="text-[11px] text-muted-foreground">
-                  {model.description}
-                </span>
-              </div>
-            </DropdownMenuItem>
-          ))}
+              </DropdownMenuItem>
+            );
+          })}
           
           {/* PeytO Plus upsell */}
           <div className="border-t border-border/50 mt-1 pt-1">
