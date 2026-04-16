@@ -9,10 +9,13 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
-  // Let Supabase auth API and our callback route through without a session check.
+  // Let Supabase auth API, our guest route, and the OAuth callback through
+  // without a session check to avoid infinite redirect loops.
   if (
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/auth/callback")
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register")
   ) {
     return NextResponse.next();
   }

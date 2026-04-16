@@ -26,8 +26,9 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.signInAnonymously();
 
   if (error) {
-    // Fall back to login page if anonymous auth fails.
-    return NextResponse.redirect(new URL(`${base}/login`, request.url));
+    // Fall back to the home page — redirecting to /login would cause a loop
+    // because the middleware would send the user back here again.
+    return NextResponse.redirect(new URL(`${base}/`, request.url));
   }
 
   return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
