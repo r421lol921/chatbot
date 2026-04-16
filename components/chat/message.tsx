@@ -382,12 +382,14 @@ const PurePreviewMessage = ({
     />
   );
 
-  // Show inline thinking animation when we have an assistant message loading
-  // but no reasoning parts have streamed in yet
+  // Whether the model provided actual reasoning parts
   const hasReasoningParts = message.parts?.some(
     (part) => part.type === "reasoning" && "text" in part && part.text?.trim().length > 0
   );
-  const showInlineThinking = isAssistant && isLoading && !hasReasoningParts && !hasAnyContent;
+
+  // Show a synthetic reasoning block for models that don't emit reasoning parts:
+  // visible while streaming and collapses to "Thought for X seconds" after done.
+  const showSyntheticReasoning = isAssistant && !hasReasoningParts;
 
   const content = isThinking ? (
     <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
@@ -398,8 +400,8 @@ const PurePreviewMessage = ({
   ) : (
     <>
       {attachments}
-      {showInlineThinking && (
-        <MessageReasoning isLoading={true} reasoning="" />
+      {showSyntheticReasoning && (
+        <MessageReasoning isLoading={isLoading} reasoning="" />
       )}
       {parts}
       {actions}

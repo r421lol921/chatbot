@@ -154,25 +154,75 @@ export type ReasoningTriggerProps = ComponentProps<
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
 };
 
+const SpinnerIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    height="12"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+    width="12"
+  >
+    <path d="M12 2v4" />
+    <path d="m16.2 7.8 2.9-2.9" />
+    <path d="M18 12h4" />
+    <path d="m16.2 16.2 2.9 2.9" />
+    <path d="M12 18v4" />
+    <path d="m4.9 19.1 2.9-2.9" />
+    <path d="M2 12h4" />
+    <path d="m4.9 4.9 2.9 2.9" />
+  </svg>
+);
+
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    height="10"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2.5"
+    viewBox="0 0 24 24"
+    width="10"
+  >
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer className="font-medium" duration={1}>Thinking...</Shimmer>;
-  }
-  
-  const durationText = duration === undefined 
-    ? "a few seconds" 
-    : duration === 1 
-      ? "1 second" 
-      : `${duration} seconds`;
-  
-  return (
-    <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground/80">
-      <span className="inline-flex size-4 items-center justify-center rounded-full bg-muted/60 text-[10px]">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2v4" /><path d="m16.2 7.8 2.9-2.9" /><path d="M18 12h4" /><path d="m16.2 16.2 2.9 2.9" /><path d="M12 18v4" /><path d="m4.9 19.1 2.9-2.9" /><path d="M2 12h4" /><path d="m4.9 4.9 2.9 2.9" />
-        </svg>
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+          <SpinnerIcon className="animate-spin" />
+        </span>
+        <Shimmer className="font-medium" duration={1}>Thinking...</Shimmer>
       </span>
-      Thought for {durationText}
+    );
+  }
+
+  const durationText =
+    duration === undefined
+      ? "a few seconds"
+      : duration === 1
+        ? "1 second"
+        : `${duration} seconds`;
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="inline-flex size-5 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border/60">
+        <CheckIcon />
+      </span>
+      <span className="font-medium text-muted-foreground/90">
+        Thought for{" "}
+        <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-foreground/70 ring-1 ring-border/40">
+          {durationText}
+        </span>
+      </span>
     </span>
   );
 };
