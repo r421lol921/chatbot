@@ -382,6 +382,13 @@ const PurePreviewMessage = ({
     />
   );
 
+  // Show inline thinking animation when we have an assistant message loading
+  // but no reasoning parts have streamed in yet
+  const hasReasoningParts = message.parts?.some(
+    (part) => part.type === "reasoning" && "text" in part && part.text?.trim().length > 0
+  );
+  const showInlineThinking = isAssistant && isLoading && !hasReasoningParts && !hasAnyContent;
+
   const content = isThinking ? (
     <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
       <Shimmer className="font-medium" duration={1}>
@@ -391,6 +398,9 @@ const PurePreviewMessage = ({
   ) : (
     <>
       {attachments}
+      {showInlineThinking && (
+        <MessageReasoning isLoading={true} reasoning="" />
+      )}
       {parts}
       {actions}
     </>
