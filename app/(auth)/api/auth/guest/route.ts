@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { signIn } from "@/app/(auth)/auth";
-import { isDevelopmentEnvironment } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,16 +9,26 @@ export async function GET(request: Request) {
       ? rawRedirect
       : "/";
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET ?? "lio-dev-fallback-secret-change-in-production",
-    secureCookie: !isDevelopmentEnvironment,
-  });
+  const supabase = await createClient();
 
-  if (token) {
-    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    return NextResponse.redirect(new URL(`${base}/`, request.url));
+  // If there is already a valid session, just redirect.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+  if (user) {
+    return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
   }
 
-  return signIn("guest", { redirect: true, redirectTo: redirectUrl });
+  // Create an anonymous (guest) Supabase session.
+  const { error } = await supabase.auth.signInAnonymously();
+
+  if (error) {
+    // Fall back to login page if anonymous auth fails.
+    return NextResponse.redirect(new URL(`${base}/login`, request.url));
+  }
+
+  return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
 }
