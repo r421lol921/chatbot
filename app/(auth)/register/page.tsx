@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useActionState, useEffect, useState } from "react";
 import { AuthForm } from "@/components/chat/auth-form";
 import { SubmitButton } from "@/components/chat/submit-button";
@@ -19,23 +18,18 @@ export default function Page() {
     { status: "idle" }
   );
 
-  const { update: updateSession } = useSession();
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: router and updateSession are stable refs
+  // biome-ignore lint/correctness/useExhaustiveDependencies: router is a stable ref
   useEffect(() => {
     if (state.status === "user_exists") {
       toast({ type: "error", description: "Account already exists!" });
     } else if (state.status === "failed") {
       toast({ type: "error", description: "Failed to create account!" });
     } else if (state.status === "invalid_data") {
-      toast({
-        type: "error",
-        description: "Failed validating your submission!",
-      });
+      toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
-      toast({ type: "success", description: "Account created!" });
+      toast({ type: "success", description: "Account created! Check your email to confirm." });
       setIsSuccessful(true);
-      updateSession();
+      router.push("/");
       router.refresh();
     }
   }, [state.status]);

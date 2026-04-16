@@ -34,7 +34,7 @@ async function SidebarShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user} />
+      <AppSidebar user={session?.user as any} userType={session?.user?.type} />
       <SidebarInset>
         <Toaster
           position="top-center"
