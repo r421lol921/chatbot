@@ -32,18 +32,6 @@ export default function ModelsPage() {
       ],
       delay: 0.1,
     },
-    {
-      name: "Lio 2.1",
-      uses: "23K",
-      description: "Latest generation with enhanced capabilities",
-      features: [
-        "Advanced reasoning",
-        "Better context understanding",
-        "Improved accuracy",
-        "Priority support",
-      ],
-      delay: 0.2,
-    },
   ];
 
   return (
@@ -137,21 +125,11 @@ export default function ModelsPage() {
           <h3 className="text-sm font-bold text-foreground mb-3">
             How to Choose?
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="text-[13px] text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">Lio 1.0</p>
-              <p>
-                Perfect for quick answers, general questions, and when you want
-                fast responses.
-              </p>
-            </div>
-            <div className="text-[13px] text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">Lio 2.1</p>
-              <p>
-                Best for complex tasks, detailed analysis, and when you need
-                more advanced reasoning.
-              </p>
-            </div>
+          <div className="text-[13px] text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Lio 1.0</p>
+            <p>
+              Perfect for quick answers, general questions, coding, writing, and everyday tasks.
+            </p>
           </div>
         </motion.div>
       </div>

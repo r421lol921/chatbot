@@ -9,10 +9,13 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
-  // Let Supabase auth API and our callback route through without a session check.
+  // Let Supabase auth API, our guest route, and the OAuth callback through
+  // without a session check to avoid infinite redirect loops.
   if (
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/auth/callback")
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register")
   ) {
     return NextResponse.next();
   }
@@ -23,15 +26,25 @@ export async function proxy(request: NextRequest) {
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
   if (!user) {
-    // Redirect unauthenticated visitors to the guest sign-in route so they
-    // get an anonymous Supabase session before landing on the chat page.
-    const redirectUrl = encodeURIComponent(new URL(request.url).pathname);
-    return NextResponse.redirect(
-      new URL(
-        `${base}/api/auth/guest?redirectUrl=${redirectUrl}`,
-        request.url
-      )
-    );
+    // Only redirect to the guest route for page navigations (not API calls,
+    // assets, etc.) to avoid infinite loops if anonymous auth is disabled.
+    const isPageRequest =
+      !pathname.startsWith("/api/") &&
+      !pathname.startsWith("/_next/") &&
+      !pathname.includes(".");
+
+    if (isPageRequest) {
+      const redirectUrl = encodeURIComponent(new URL(request.url).pathname);
+      return NextResponse.redirect(
+        new URL(
+          `${base}/api/auth/guest?redirectUrl=${redirectUrl}`,
+          request.url
+        )
+      );
+    }
+
+    // For API routes and assets, just let the request through unauthenticated.
+    return supabaseResponse;
   }
 
   const isGuest = guestRegex.test(user.email ?? "");

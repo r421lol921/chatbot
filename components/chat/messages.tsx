@@ -99,7 +99,8 @@ function PureMessages({
             />
           ))}
 
-          {status === "submitted" && messages.at(-1)?.role !== "assistant" && (
+          {(status === "submitted" || (status === "streaming" && messages.length === 0)) && 
+            messages.at(-1)?.role !== "assistant" && (
             <ThinkingMessage />
           )}
 
