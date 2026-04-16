@@ -19,7 +19,6 @@ const basicFeatures = [
 const plusFeatures = [
   "1 message per 5 hours",
   "Everything in Basic",
-  "Lio 2.1 Model + Lio 1.0",
   "Priority response quality",
   "More soon!",
 ];
@@ -128,7 +127,7 @@ export default function PlansPage() {
           </div>
           <h2 className="text-xl font-bold text-foreground">PeytO Plus</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Unlock Lio 2.1 and reduced limits.
+            Unlock reduced limits and priority features.
           </p>
 
           <div className="my-6 border-t border-border/40" />
