@@ -2,10 +2,10 @@
 
 import {
   CreditCardIcon,
-  GlobeIcon,
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
+  SparklesIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +20,7 @@ import {
   SidebarHistory,
 } from "@/components/chat/sidebar-history";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
+import { PromptEditorModal } from "@/components/chat/prompt-editor-modal";
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +52,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
 
   const handleDeleteAll = () => {
     setShowDeleteAllDialog(false);
@@ -131,16 +133,18 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
+
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    asChild
                     className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    tooltip="Public Chats"
+                    onClick={() => {
+                      setOpenMobile(false);
+                      setShowPromptEditor(true);
+                    }}
+                    tooltip="Customize Prompt"
                   >
-                    <Link href="/public" onClick={() => setOpenMobile(false)}>
-                      <GlobeIcon className="size-4" />
-                      <span className="text-[13px]">Public</span>
-                    </Link>
+                    <SparklesIcon className="size-4" />
+                    <span className="text-[13px]">Prompt</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
@@ -203,6 +207,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PromptEditorModal 
+        open={showPromptEditor} 
+        onOpenChange={setShowPromptEditor} 
+      />
     </>
   );
 }
