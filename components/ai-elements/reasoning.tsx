@@ -178,12 +178,9 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
         : `${duration} seconds`;
 
   return (
-    <span className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
-      {/* Small filled dot — settled, not spinning */}
-      <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
-      <span>
-        Thought for <span className="text-foreground/60">{durationText}</span>
-      </span>
+    <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+      Thought for{" "}
+      <span className="text-foreground/70">{durationText}</span>
     </span>
   );
 };
