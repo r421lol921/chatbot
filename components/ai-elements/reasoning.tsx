@@ -154,53 +154,18 @@ export type ReasoningTriggerProps = ComponentProps<
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
 };
 
-const SpinnerIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    height="12"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-    width="12"
-  >
-    <path d="M12 2v4" />
-    <path d="m16.2 7.8 2.9-2.9" />
-    <path d="M18 12h4" />
-    <path d="m16.2 16.2 2.9 2.9" />
-    <path d="M12 18v4" />
-    <path d="m4.9 19.1 2.9-2.9" />
-    <path d="M2 12h4" />
-    <path d="m4.9 4.9 2.9 2.9" />
-  </svg>
-);
-
-const CheckIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    height="10"
-    stroke="currentColor"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="2.5"
-    viewBox="0 0 24 24"
-    width="10"
-  >
-    <path d="M20 6 9 17l-5-5" />
-  </svg>
-);
-
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return (
-      <span className="inline-flex items-center gap-2">
-        <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-          <SpinnerIcon className="animate-spin" />
+      <span className="inline-flex items-center gap-2.5">
+        {/* Pulsing orb — same style as ChatGPT/Claude thinking indicator */}
+        <span className="relative flex size-3.5 shrink-0">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
+          <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
         </span>
-        <Shimmer className="font-medium" duration={1}>Thinking...</Shimmer>
+        <Shimmer className="text-[13px] font-normal text-muted-foreground" duration={1.2}>
+          Thinking…
+        </Shimmer>
       </span>
     );
   }
@@ -213,15 +178,11 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
         : `${duration} seconds`;
 
   return (
-    <span className="inline-flex items-center gap-2">
-      <span className="inline-flex size-5 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border/60">
-        <CheckIcon />
-      </span>
-      <span className="font-medium text-muted-foreground/90">
-        Thought for{" "}
-        <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-foreground/70 ring-1 ring-border/40">
-          {durationText}
-        </span>
+    <span className="inline-flex items-center gap-2 text-[13px] text-muted-foreground">
+      {/* Small filled dot — settled, not spinning */}
+      <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+      <span>
+        Thought for <span className="text-foreground/60">{durationText}</span>
       </span>
     </span>
   );
@@ -239,7 +200,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-[13px] leading-[1.65] transition-colors hover:text-foreground",
+          "group flex w-full items-center gap-2 py-0.5 text-[13px] leading-[1.65] transition-opacity hover:opacity-80",
           className
         )}
         {...props}
@@ -247,12 +208,14 @@ export const ReasoningTrigger = memo(
         {children ?? (
           <>
             {getThinkingMessage(isStreaming, duration)}
-            <ChevronDownIcon
-              className={cn(
-                "size-4 transition-transform",
-                isOpen ? "rotate-180" : "rotate-0"
-              )}
-            />
+            {!isStreaming && (
+              <ChevronDownIcon
+                className={cn(
+                  "size-3.5 shrink-0 text-muted-foreground/50 transition-transform",
+                  isOpen ? "rotate-180" : "rotate-0"
+                )}
+              />
+            )}
           </>
         )}
       </CollapsibleTrigger>
