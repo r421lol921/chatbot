@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 
 import { AuthForm } from "@/components/chat/auth-form";
@@ -11,6 +11,7 @@ import { type LoginActionState, login } from "../actions";
 
 export default function Page() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
 
@@ -27,7 +28,8 @@ export default function Page() {
       toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
       setIsSuccessful(true);
-      router.push("/");
+      const next = searchParams.get("next") || "/";
+      router.push(next);
       router.refresh();
     }
   }, [state.status]);
