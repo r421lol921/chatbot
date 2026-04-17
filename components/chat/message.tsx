@@ -484,16 +484,9 @@ export const ThinkingMessage = () => {
           </div>
         </div>
 
-        <div className="flex h-[calc(13px*1.65)] items-center">
-          <span className="inline-flex items-center gap-2.5">
-            {/* Pulsing orb */}
-            <span className="relative flex size-3.5 shrink-0">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
-              <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
-            </span>
-            <span className="text-[13px] font-normal text-muted-foreground">
-              <Shimmer duration={1.2}>Thinking</Shimmer>
-            </span>
+        <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
+          <span className="text-[13px] font-normal text-muted-foreground">
+            <Shimmer duration={1.2}>Thinking</Shimmer>
           </span>
         </div>
       </div>

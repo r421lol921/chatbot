@@ -33,15 +33,7 @@ export const chatModels: ChatModel[] = [
     id: "lio-1",
     name: "Lio 1.0",
     provider: "lio",
-    description: "Lio 1.0 by PeytOtoria — Qwen2.5-0.5B on-device",
-    locked: false,
-    webllmModelId: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-  },
-  {
-    id: "lio-2",
-    name: "Lio 2.1",
-    provider: "lio",
-    description: "Lio 2.1 — runs entirely on your device via WebLLM",
+    description: "Lio 1.0 by PeytOtoria — runs entirely on your device via WebLLM",
     locked: false,
     webllmOnly: true,
     webllmModelId: "TinyLlama-1.1B-Chat-v0.4-q4f32_1-MLC-1k",
@@ -52,17 +44,16 @@ export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>
 > {
   return {
-    "lio-1": { tools: true, vision: false, reasoning: false },
-    "lio-2": { tools: false, vision: false, reasoning: false },
+    "lio-1": { tools: false, vision: false, reasoning: false },
   };
 }
 
 /**
  * Returns true for models that support a "Run on device" local inference mode.
- * Lio 1.0 supports it as an optional toggle; Lio 2.1 is always on-device.
+ * Lio 1.0 always runs on-device via WebLLM.
  */
 export function supportsLocalMode(modelId: string): boolean {
-  return modelId === "lio-1" || modelId === "lio-2";
+  return modelId === "lio-1";
 }
 
 export const isDemo = process.env.IS_DEMO === "1";
