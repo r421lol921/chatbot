@@ -35,7 +35,7 @@ import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
-import { generateSmartResponse, detectIntent, generateCodeResponse } from "@/lib/ai/smart-responses";
+import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse } from "@/lib/ai/smart-responses";
 import { executeGetWeather } from "@/lib/ai/tools/get-weather";
 import { executeGetMap } from "@/lib/ai/tools/get-map";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
@@ -198,16 +198,45 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
+        const reasoningId = generateId();
         const messageId = generateId();
 
         // Detect intent: weather, map, code, or generic text
         const intent = detectIntent(userMessageText);
 
+        // Generate contextual thinking text based on the message
+        const thinkingText = generateThinkingText(userMessageText);
+
         // ── Realistic "reading" pause — proportional to message length ────────
-        // Simulates Lio reading before responding. ~100ms per word, 400ms–2200ms.
+        // Simulates Lio reading the user's message before responding.
+        // ~100ms per word, min 400ms, max 2200ms.
         const wordCount = userMessageText.split(/\s+/).filter(Boolean).length;
         const readingTime = Math.min(Math.max(wordCount * 100, 400), 2200);
         await new Promise((resolve) => setTimeout(resolve, readingTime));
+
+        // Simulate thinking animation with reasoning block
+        dataStream.write({
+          type: "reasoning-start",
+          id: reasoningId,
+        });
+
+        for (const char of thinkingText) {
+          dataStream.write({
+            type: "reasoning-delta",
+            id: reasoningId,
+            delta: char,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 28));
+        }
+
+        dataStream.write({
+          type: "reasoning-end",
+          id: reasoningId,
+        });
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.random() * 600 + 200)
+        );
 
         // ── Weather intent ──────────────────────────────────────────────
         if (intent.type === "weather" && intent.location) {

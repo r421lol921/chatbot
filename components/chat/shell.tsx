@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveChat } from "@/hooks/use-active-chat";
 import { useWebLLM } from "@/hooks/use-webllm";
-import { chatModels } from "@/lib/ai/models";
-import { WebLLMInstallModal } from "./webllm-install-modal";
 import {
   initialArtifactData,
   useArtifact,
@@ -49,12 +47,6 @@ export function ChatShell() {
   
   const webllm = useWebLLM();
   const [localStatus, setLocalStatus] = useState<"ready" | "submitted">("ready");
-  const [showWebLLMModal, setShowWebLLMModal] = useState(false);
-
-  // Check if the currently selected model requires WebLLM but it isn't loaded
-  const selectedModelConfig = chatModels.find((m) => m.id === currentModelId);
-  const isWebLLMRequired = selectedModelConfig?.webllmOnly === true;
-  const isWebLLMReady = webllm.status === "ready" && webllm.modelId === selectedModelConfig?.webllmModelId;
   
   // Handle sending messages with local model
   const sendLocalMessage = useCallback(
@@ -146,11 +138,6 @@ export function ChatShell() {
   // Wrapped send function - matches sendMessage signature
   const wrappedSendMessage: typeof sendMessage = useCallback(
     (message) => {
-      // If the model is WebLLM-only but not loaded yet, block the send and show install modal
-      if (isWebLLMRequired && !isWebLLMReady) {
-        setShowWebLLMModal(true);
-        return Promise.resolve();
-      }
       if (useLocalChat) {
         sendLocalMessage(message as ChatMessage);
         return Promise.resolve(); 
@@ -158,7 +145,7 @@ export function ChatShell() {
         return sendMessage(message);
       }
     },
-    [useLocalChat, sendLocalMessage, sendMessage, isWebLLMRequired, isWebLLMReady]
+    [useLocalChat, sendLocalMessage, sendMessage]
   );
   
   // Combined status
@@ -288,16 +275,7 @@ export function ChatShell() {
 
       <DataStreamHandler />
 
-      {/* Install modal — shown when user tries to send with a WebLLM model that isn't loaded */}
-      <WebLLMInstallModal
-        onActivate={() => {
-          webllm.setActive(true);
-          setShowWebLLMModal(false);
-        }}
-        onClose={() => setShowWebLLMModal(false)}
-        open={showWebLLMModal}
-        selectedChatModel={currentModelId}
-      />
+
     </>
   );
 }
