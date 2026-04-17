@@ -207,6 +207,13 @@ export async function POST(request: Request) {
         // Generate contextual thinking text based on the message
         const thinkingText = generateThinkingText(userMessageText);
 
+        // ── Realistic "reading" pause — proportional to message length ────────
+        // Simulates Lio reading the user's message before responding.
+        // ~100ms per word, min 400ms, max 2200ms.
+        const wordCount = userMessageText.split(/\s+/).filter(Boolean).length;
+        const readingTime = Math.min(Math.max(wordCount * 100, 400), 2200);
+        await new Promise((resolve) => setTimeout(resolve, readingTime));
+
         // Simulate thinking animation with reasoning block
         dataStream.write({
           type: "reasoning-start",
@@ -228,7 +235,7 @@ export async function POST(request: Request) {
         });
 
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.random() * 800 + 400)
+          setTimeout(resolve, Math.random() * 600 + 200)
         );
 
         // ── Weather intent ──────────────────────────────────────────────
@@ -297,6 +304,30 @@ export async function POST(request: Request) {
             await new Promise((resolve) => setTimeout(resolve, 40));
           }
           dataStream.write({ type: "text-end", id: messageId });
+
+          // ── Occasional second follow-up message (~25% chance) ──────────────
+          // Like a human who texts a second quick thought after sending the first.
+          const sendFollowUp = Math.random() < 0.25;
+          if (sendFollowUp) {
+            const followUps = [
+              "Anything else on your mind?",
+              "Let me know if you want me to go deeper on any of that.",
+              "Feel free to ask follow-up questions.",
+              "That's the gist — happy to elaborate.",
+              "Does that help?",
+              "Let me know if I missed anything.",
+            ];
+            const followUp = followUps[Math.floor(Math.random() * followUps.length)];
+            // Short pause between messages, like typing a second text
+            await new Promise((r) => setTimeout(r, 700 + Math.random() * 500));
+            const followUpId = generateId();
+            dataStream.write({ type: "text-start", id: followUpId });
+            for (const char of followUp) {
+              dataStream.write({ type: "text-delta", id: followUpId, delta: char });
+              await new Promise((r) => setTimeout(r, 35));
+            }
+            dataStream.write({ type: "text-end", id: followUpId });
+          }
         }
 
         if (titlePromise) {

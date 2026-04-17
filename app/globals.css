@@ -369,6 +369,18 @@ textarea:focus-visible {
   }
 }
 
+/* Odometer / slot-flip animation for Read / Delivered receipt */
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @keyframes subtle-lift {
   from {
     transform: translateY(0);
