@@ -40,6 +40,8 @@ import {
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
 import { PaperclipIcon, StopIcon } from "./icons";
+
+const STORAGE_SELECTED_MODEL_KEY = "lio-selected-model";
 import { PreviewAttachment } from "./preview-attachment";
 import {
   type SlashCommand,
@@ -634,6 +636,34 @@ function PureModelSelectorCompact({
   const [showPlusModal, setShowPlusModal] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const webllm = useWebLLM();
+
+  // On mount: restore the previously selected model from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem(STORAGE_SELECTED_MODEL_KEY);
+    if (stored && stored !== selectedModelId) {
+      onModelChange?.(stored);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When selectedModelId changes, persist it and auto-load WebLLM if needed
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_SELECTED_MODEL_KEY, selectedModelId);
+    }
+    const model = chatModels.find((m) => m.id === selectedModelId);
+    if (model?.webllmOnly && model.webllmModelId) {
+      // Auto-load WebLLM if the selected model requires it and it isn't loaded yet
+      const needsLoad =
+        webllm.status === "idle" || webllm.status === "error" ||
+        (webllm.status === "ready" && webllm.modelId !== model.webllmModelId);
+      if (needsLoad) {
+        webllm.switchModel(model.webllmModelId);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModelId]);
 
   const isOnDevice = webllm.isActive;
   const isWebLLMLoading = webllm.status === "loading";

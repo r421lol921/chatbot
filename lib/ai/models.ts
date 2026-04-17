@@ -33,8 +33,9 @@ export const chatModels: ChatModel[] = [
     id: "lio-1",
     name: "Lio 1.0",
     provider: "lio",
-    description: "Lio 1.0 by PeytOtoria",
+    description: "Lio 1.0 by PeytOtoria — Qwen2.5-0.5B on-device",
     locked: false,
+    webllmModelId: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
   },
   {
     id: "lio-2",

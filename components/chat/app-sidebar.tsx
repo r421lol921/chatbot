@@ -5,7 +5,7 @@ import {
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
-  SparklesIcon,
+  SlidersHorizontalIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -144,7 +144,7 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
                     }}
                     tooltip="Customize Prompt"
                   >
-                    <SparklesIcon className="size-4" />
+                    <SlidersHorizontalIcon className="size-4" />
                     <span className="text-[13px]">Prompt</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
