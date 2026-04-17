@@ -71,18 +71,18 @@ export function PromptEditorModal({ open, onOpenChange }: PromptEditorModalProps
         <DialogHeader>
           <DialogTitle>Customize Lio&apos;s Prompt</DialogTitle>
           <DialogDescription>
-            Add your own instructions to customize how Lio responds. Lio will always remember she&apos;s Lio 1.0 by PeytOtoria.com and keep her playful girly personality :)
+            Add your own instructions to customize how Lio responds. Lio will always stay in character as Lio 1.0 by PeytOtoria.com.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <Textarea
-            placeholder="Example: Always respond in Spanish, or focus on helping me with cooking, or be extra encouraging..."
+            placeholder="Example: Always respond in Spanish. Focus on coding help. Be extra concise. Use a sarcastic tone..."
             value={localPrompt}
             onChange={(e) => setLocalPrompt(e.target.value)}
             className="min-h-[150px] resize-none"
           />
           <p className="text-xs text-muted-foreground">
-            Note: Core identity (Lio 1.0 by PeytOtoria.com) and personality cannot be overwritten.
+            Note: Core identity (Lio 1.0 by PeytOtoria.com) cannot be overwritten.
           </p>
         </div>
         <DialogFooter className="gap-2 sm:gap-0">

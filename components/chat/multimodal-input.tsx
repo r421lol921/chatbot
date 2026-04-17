@@ -40,6 +40,8 @@ import {
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
 import { PaperclipIcon, StopIcon } from "./icons";
+
+const STORAGE_SELECTED_MODEL_KEY = "lio-selected-model";
 import { PreviewAttachment } from "./preview-attachment";
 import {
   type SlashCommand,
@@ -540,7 +542,7 @@ function PureMultimodalInput({
             />
           </PromptInputTools>
 
-          {status === "submitted" ? (
+          {status === "submitted" || status === "streaming" ? (
             <StopButton setMessages={setMessages} stop={stop} />
           ) : (
             <PromptInputSubmit
@@ -635,6 +637,34 @@ function PureModelSelectorCompact({
   const [showInstallModal, setShowInstallModal] = useState(false);
   const webllm = useWebLLM();
 
+  // On mount: restore the previously selected model from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem(STORAGE_SELECTED_MODEL_KEY);
+    if (stored && stored !== selectedModelId) {
+      onModelChange?.(stored);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When selectedModelId changes, persist it and auto-load WebLLM if needed
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_SELECTED_MODEL_KEY, selectedModelId);
+    }
+    const model = chatModels.find((m) => m.id === selectedModelId);
+    if (model?.webllmOnly && model.webllmModelId) {
+      // Auto-load WebLLM if the selected model requires it and it isn't loaded yet
+      const needsLoad =
+        webllm.status === "idle" || webllm.status === "error" ||
+        (webllm.status === "ready" && webllm.modelId !== model.webllmModelId);
+      if (needsLoad) {
+        webllm.switchModel(model.webllmModelId);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModelId]);
+
   const isOnDevice = webllm.isActive;
   const isWebLLMLoading = webllm.status === "loading";
 
@@ -672,8 +702,11 @@ function PureModelSelectorCompact({
 
         <DropdownMenuContent align="start" className="min-w-[220px]" side="top">
           {chatModels.map((model) => {
-            const canRunLocal = supportsLocalMode(model.id);
+            const isWebLLMModel = model.webllmOnly === true;
+            const canRunLocal = supportsLocalMode(model.id) && !isWebLLMModel;
             const isSelected = model.id === selectedModelId;
+            // For lio-2, it's "active on device" when loaded with TinyLlama
+            const isLio2Active = isWebLLMModel && webllm.status === "ready" && webllm.modelId === model.webllmModelId;
             return (
               <div key={model.id}>
                 <DropdownMenuItem
@@ -685,6 +718,13 @@ function PureModelSelectorCompact({
                     if (model.locked) {
                       e.preventDefault();
                       setShowPlusModal(true);
+                    } else if (isWebLLMModel) {
+                      e.preventDefault();
+                      // Lio 2.1 — always on-device, show install modal with the TinyLlama model
+                      onModelChange?.(model.id);
+                      if (!isLio2Active) {
+                        setShowInstallModal(true);
+                      }
                     } else {
                       // If switching away from on-device mode, deactivate it
                       if (model.id !== selectedModelId && webllm.isActive) {
@@ -705,6 +745,15 @@ function PureModelSelectorCompact({
                           PLUS
                         </span>
                       )}
+                      {isWebLLMModel && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-semibold text-foreground/70">
+                          <Cpu className="size-2.5" />
+                          on device
+                        </span>
+                      )}
+                      {isLio2Active && (
+                        <div className="size-1.5 rounded-full bg-green-500 shrink-0" />
+                      )}
                     </div>
                     <span className="text-[11px] text-muted-foreground">
                       {model.description}
@@ -712,7 +761,7 @@ function PureModelSelectorCompact({
                   </div>
                 </DropdownMenuItem>
 
-                {/* "Run on device" sub-option for supported models */}
+                {/* "Run on device" sub-option for Lio 1.0 (toggle mode) */}
                 {canRunLocal && isSelected && (
                   <DropdownMenuItem
                     className="mx-1 mb-1 flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-2.5 py-2 cursor-pointer group"
@@ -764,7 +813,7 @@ function PureModelSelectorCompact({
                 </span>
               </div>
               <span className="text-[10px] text-muted-foreground">
-                Unlock Lio 2.1 and premium features
+                Unlock premium features
               </span>
             </DropdownMenuItem>
           </div>
@@ -775,10 +824,12 @@ function PureModelSelectorCompact({
       <WebLLMInstallModal
         open={showInstallModal}
         onClose={() => setShowInstallModal(false)}
+        selectedChatModel={selectedModelId}
         onActivate={() => {
           webllm.setActive(true);
-          // Make sure the model is selected
-          if (selectedModelId !== "lio-1") onModelChange?.("lio-1");
+          if (selectedModelId !== "lio-1" && selectedModelId !== "lio-2") {
+            onModelChange?.("lio-1");
+          }
         }}
       />
 

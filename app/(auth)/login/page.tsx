@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useActionState, useEffect, useState } from "react";
 
 import { AuthForm } from "@/components/chat/auth-form";
 import { SubmitButton } from "@/components/chat/submit-button";
 import { toast } from "@/components/chat/toast";
 import { type LoginActionState, login } from "../actions";
 
-export default function Page() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
 
@@ -27,7 +28,8 @@ export default function Page() {
       toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
       setIsSuccessful(true);
-      router.push("/");
+      const next = searchParams.get("next") || "/";
+      router.push(next);
       router.refresh();
     }
   }, [state.status]);
@@ -38,23 +40,31 @@ export default function Page() {
   };
 
   return (
+    <AuthForm action={handleSubmit} defaultEmail={email}>
+      <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
+      <p className="text-center text-[13px] text-muted-foreground">
+        {"No account? "}
+        <Link
+          className="text-foreground underline-offset-4 hover:underline"
+          href="/register"
+        >
+          Sign up
+        </Link>
+      </p>
+    </AuthForm>
+  );
+}
+
+export default function Page() {
+  return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Welcome back to Lio 1.0</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Welcome back to Lio</h1>
       <p className="text-sm text-muted-foreground">
         Sign in to your account to continue chatting
       </p>
-      <AuthForm action={handleSubmit} defaultEmail={email}>
-        <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
-        <p className="text-center text-[13px] text-muted-foreground">
-          {"No account? "}
-          <Link
-            className="text-foreground underline-offset-4 hover:underline"
-            href="/register"
-          >
-            Sign up
-          </Link>
-        </p>
-      </AuthForm>
+      <Suspense fallback={<div className="h-32 animate-pulse rounded-xl bg-muted/40" />}>
+        <LoginForm />
+      </Suspense>
     </>
   );
 }

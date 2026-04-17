@@ -5,6 +5,7 @@ import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { MessageContent, MessageResponse } from "../ai-elements/message";
 import { Shimmer } from "../ai-elements/shimmer";
+import { useEffect, useState } from "react";
 import {
   Tool,
   ToolContent,
@@ -24,12 +25,48 @@ import { PreviewAttachment } from "./preview-attachment";
 import { ProductList } from "./product-list";
 import { Weather } from "./weather";
 
+/**
+ * iMessage-style Read / Delivered receipt under user messages.
+ * Shows "Delivered" immediately, then flips to "Read" after a short delay
+ * using a vertical slot-machine (odometer) animation.
+ */
+function ReadReceipt({ isLastUserMessage, isLoading }: { isLastUserMessage: boolean; isLoading: boolean }) {
+  const [label, setLabel] = useState<"Delivered" | "Read">("Delivered");
+
+  useEffect(() => {
+    if (!isLastUserMessage) return;
+    // Reset to "Delivered" whenever this becomes the last user message
+    setLabel("Delivered");
+    // Flip to "Read" once the AI finishes responding
+    if (!isLoading) {
+      const id = setTimeout(() => setLabel("Read"), 600);
+      return () => clearTimeout(id);
+    }
+  }, [isLoading, isLastUserMessage]);
+
+  // Only render for the last user message
+  if (!isLastUserMessage) return null;
+
+  return (
+    <div className="flex justify-end overflow-hidden h-[14px] mt-0.5 mr-0.5">
+      <div
+        key={label}
+        className="text-[10px] text-muted-foreground/50 animate-[slide-down_0.3s_cubic-bezier(0.22,1,0.36,1)]"
+        style={{ lineHeight: "14px" }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
 const PurePreviewMessage = ({
   addToolApprovalResponse,
   chatId,
   message,
   vote,
   isLoading,
+  isLastUserMessage,
   setMessages: _setMessages,
   regenerate: _regenerate,
   isReadonly,
@@ -41,6 +78,7 @@ const PurePreviewMessage = ({
   message: ChatMessage;
   vote: Vote | undefined;
   isLoading: boolean;
+  isLastUserMessage: boolean;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
@@ -432,7 +470,10 @@ const PurePreviewMessage = ({
         {isAssistant ? (
           <div className="flex min-w-0 flex-1 flex-col gap-2">{content}</div>
         ) : (
-          content
+          <div className="flex flex-col items-end gap-0">
+            {content}
+            <ReadReceipt isLastUserMessage={isLastUserMessage} isLoading={isLoading} />
+          </div>
         )}
       </div>
     </div>

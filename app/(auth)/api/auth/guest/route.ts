@@ -26,9 +26,15 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.signInAnonymously();
 
   if (error) {
-    // Fall back to the home page — redirecting to /login would cause a loop
-    // because the middleware would send the user back here again.
-    return NextResponse.redirect(new URL(`${base}/`, request.url));
+    // Anonymous sign-in failed (e.g. disabled in Supabase dashboard).
+    // Redirect to /login so the user can sign in with email/password.
+    // We pass the original destination as a query param so the login page
+    // can redirect back after a successful sign-in.
+    const loginUrl = new URL(`${base}/login`, request.url);
+    if (redirectUrl !== "/") {
+      loginUrl.searchParams.set("next", redirectUrl);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
