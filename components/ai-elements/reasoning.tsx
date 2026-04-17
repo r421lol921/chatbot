@@ -22,6 +22,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type FC,
 } from "react";
 import { Streamdown } from "streamdown";
 
@@ -154,18 +155,33 @@ export type ReasoningTriggerProps = ComponentProps<
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
 };
 
+/** Ticking live counter shown inside the trigger while thinking. */
+const LiveThinkingCounter: FC = () => {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span className="tabular-nums text-muted-foreground/70">
+      {seconds}s
+    </span>
+  );
+};
+
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return (
       <span className="inline-flex items-center gap-2.5">
-        {/* Pulsing orb — same style as ChatGPT/Claude thinking indicator */}
+        {/* Pulsing orb — OG ChatGPT-style thinking indicator */}
         <span className="relative flex size-3.5 shrink-0">
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
           <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
         </span>
-        <Shimmer className="text-[13px] font-normal text-muted-foreground" duration={1.2}>
-          Thinking…
-        </Shimmer>
+        <span className="inline-flex items-center gap-1.5 text-[13px] font-normal text-muted-foreground">
+          <Shimmer duration={1.2}>Thinking</Shimmer>
+          <LiveThinkingCounter />
+        </span>
       </span>
     );
   }

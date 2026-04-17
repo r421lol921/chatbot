@@ -11,15 +11,26 @@ import {
 } from "react";
 
 const STORAGE_KEY = "lio-webllm-active";
+const STORAGE_MODEL_KEY = "lio-webllm-model";
 import type { MLCEngineInterface, InitProgressReport } from "@mlc-ai/web-llm";
 
-// Qwen2.5-0.5B — ~400 MB, fast, smart, runs comfortably in-browser via WebGPU
-// Parameters: 494M total (494,032,896) | Layers: 28 | Heads: 14 | KV heads: 2
-// Context: 32,768 tokens | Embedding dim: 896 | Quantization: q4f16 (4-bit weights, 16-bit activations)
-const WEBLLM_MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
+// Default on-device model for Lio 1.0 (toggle mode)
+const DEFAULT_WEBLLM_MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
 
-// Lio 1.0 system prompt injected into every local inference request
-const LIO_SYSTEM_PROMPT = `You are Lio 1.0, a helpful AI assistant developed by PeytOtoria.com.
+// Lio 2.1 uses TinyLlama
+const LIO_2_WEBLLM_MODEL_ID = "TinyLlama-1.1B-Chat-v0.4-q4f32_1-MLC-1k";
+
+// Export for external use
+export { LIO_2_WEBLLM_MODEL_ID };
+
+// Active model — read from localStorage on init
+const getStoredModelId = () => {
+  if (typeof window === "undefined") return DEFAULT_WEBLLM_MODEL_ID;
+  return localStorage.getItem(STORAGE_MODEL_KEY) ?? DEFAULT_WEBLLM_MODEL_ID;
+};
+
+// Lio system prompt injected into every local inference request
+const LIO_SYSTEM_PROMPT = `You are Lio, a helpful AI assistant developed by PeytOtoria.com.
 
 IDENTITY:
 - You are Lio 1.0, built by PeytOtoria.com developers. That is all you say about yourself.
@@ -61,7 +72,7 @@ export type WebLLMContextValue = {
   isSupported: boolean;
   isActive: boolean;
   modelId: string;
-  loadModel: () => Promise<void>;
+  loadModel: (modelId?: string) => Promise<void>;
   generateResponse: (
     messages: { role: "user" | "assistant" | "system"; content: string }[],
     onChunk?: (chunk: string) => void
@@ -69,6 +80,7 @@ export type WebLLMContextValue = {
   stopGeneration: () => void;
   unloadModel: () => void;
   setActive: (active: boolean) => void;
+  switchModel: (newModelId: string) => Promise<void>;
 };
 
 const WebLLMContext = createContext<WebLLMContextValue | null>(null);
@@ -85,6 +97,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) === "true";
   });
+  const [activeModelId, setActiveModelId] = useState<string>(() => getStoredModelId());
 
   const engineRef = useRef<MLCEngineInterface | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -92,7 +105,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
   // On mount: if the user had on-device mode active, auto-load the model
   useEffect(() => {
     if (isActive) {
-      loadModel();
+      loadModel(activeModelId);
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,7 +119,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
     return hasWebGPU;
   }, []);
 
-  const loadModel = useCallback(async () => {
+  const loadModel = useCallback(async (modelIdOverride?: string) => {
     if (!checkSupport()) {
       setError("WebGPU is not supported in this browser. Try Chrome 113+ or Edge 113+.");
       setStatus("error");
@@ -116,6 +129,8 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
     if (status === "loading" || status === "ready" || status === "generating") {
       return;
     }
+
+    const targetModelId = modelIdOverride ?? activeModelId ?? DEFAULT_WEBLLM_MODEL_ID;
 
     setStatus("loading");
     setProgress(0);
@@ -140,12 +155,16 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
         }
       };
 
-      const engine = await webllm.CreateMLCEngine(WEBLLM_MODEL_ID, {
+      const engine = await webllm.CreateMLCEngine(targetModelId, {
         initProgressCallback,
         logLevel: "SILENT",
       });
 
       engineRef.current = engine;
+      setActiveModelId(targetModelId);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_MODEL_KEY, targetModelId);
+      }
       setStatus("ready");
       setProgress(1);
       setProgressText("Ready");
@@ -154,7 +173,7 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : "Failed to load model");
       setStatus("error");
     }
-  }, [status, checkSupport]);
+  }, [status, checkSupport, activeModelId]);
 
   const generateResponse = useCallback(
     async (
@@ -234,6 +253,20 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const switchModel = useCallback(async (newModelId: string) => {
+    // Unload existing engine
+    engineRef.current = null;
+    setStatus("idle");
+    setProgress(0);
+    setProgressText("");
+    setActiveModelId(newModelId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_MODEL_KEY, newModelId);
+    }
+    // Load the new model right away
+    await loadModel(newModelId);
+  }, [loadModel]);
+
   return (
     <WebLLMContext.Provider
       value={{
@@ -245,12 +278,13 @@ export function WebLLMProvider({ children }: { children: ReactNode }) {
         error,
         isSupported,
         isActive,
-        modelId: WEBLLM_MODEL_ID,
+        modelId: activeModelId,
         loadModel,
         generateResponse,
         stopGeneration,
         unloadModel,
         setActive,
+        switchModel,
       }}
     >
       {children}
