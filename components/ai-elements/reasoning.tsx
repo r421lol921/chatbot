@@ -169,34 +169,20 @@ const LiveThinkingCounter: FC = () => {
   );
 };
 
-const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
-  if (isStreaming || duration === 0) {
-    return (
-      <span className="inline-flex items-center gap-2.5">
-        {/* Pulsing orb — OG ChatGPT-style thinking indicator */}
-        <span className="relative flex size-3.5 shrink-0">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
-          <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-normal text-muted-foreground">
-          <Shimmer duration={1.2}>Thinking</Shimmer>
-          <LiveThinkingCounter />
-        </span>
-      </span>
-    );
-  }
-
-  const durationText =
-    duration === undefined
-      ? "a few seconds"
-      : duration === 1
-        ? "1 second"
-        : `${duration} seconds`;
+const defaultGetThinkingMessage = (isStreaming: boolean, _duration?: number) => {
+  if (!isStreaming) return null;
 
   return (
-    <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
-      Thought for{" "}
-      <span className="text-foreground/70">{durationText}</span>
+    <span className="inline-flex items-center gap-2.5">
+      {/* Pulsing orb — OG thinking indicator */}
+      <span className="relative flex size-3.5 shrink-0">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
+        <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
+      </span>
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-normal text-muted-foreground">
+        <Shimmer duration={1.2}>Thinking</Shimmer>
+        <LiveThinkingCounter />
+      </span>
     </span>
   );
 };
@@ -210,6 +196,10 @@ export const ReasoningTrigger = memo(
   }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();
 
+    // Don't render the trigger at all once thinking is done and there's no content to expand
+    const thinkingMessage = getThinkingMessage(isStreaming, duration);
+    if (!isStreaming && !children && !thinkingMessage) return null;
+
     return (
       <CollapsibleTrigger
         className={cn(
@@ -220,12 +210,11 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            {getThinkingMessage(isStreaming, duration)}
-            {!isStreaming && (
+            {thinkingMessage}
+            {!isStreaming && isOpen && (
               <ChevronDownIcon
                 className={cn(
-                  "size-3.5 shrink-0 text-muted-foreground/50 transition-transform",
-                  isOpen ? "rotate-180" : "rotate-0"
+                  "size-3.5 shrink-0 text-muted-foreground/50 transition-transform rotate-180"
                 )}
               />
             )}
