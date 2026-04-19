@@ -11,6 +11,7 @@ import {
 } from "../ai-elements/message";
 import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
 import { HeartReactionButton } from "./emoji-reaction-button";
+import { ReplyIcon, ShareIcon } from "lucide-react";
 
 export function PureMessageActions({
   chatId,
@@ -18,12 +19,14 @@ export function PureMessageActions({
   vote,
   isLoading,
   onEdit,
+  onReply,
 }: {
   chatId: string;
   message: ChatMessage;
   vote: Vote | undefined;
   isLoading: boolean;
   onEdit?: () => void;
+  onReply?: (message: ChatMessage) => void;
 }) {
   const { mutate } = useSWRConfig();
   const [_, copyToClipboard] = useCopyToClipboard();
@@ -74,8 +77,38 @@ export function PureMessageActions({
     );
   }
 
+  const handleShare = async () => {
+    if (!textFromParts) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: textFromParts });
+      } catch {
+        // user cancelled share
+      }
+    } else {
+      await copyToClipboard(textFromParts);
+      toast.success("Copied to clipboard!");
+    }
+  };
+
   return (
     <Actions className="-ml-0.5 opacity-0 transition-opacity duration-150 group-hover/message:opacity-100">
+      <Action
+        className="text-muted-foreground/50 hover:text-foreground"
+        onClick={() => onReply?.(message)}
+        tooltip="Reply"
+      >
+        <ReplyIcon className="size-3.5" />
+      </Action>
+
+      <Action
+        className="text-muted-foreground/50 hover:text-foreground"
+        onClick={handleShare}
+        tooltip="Share"
+      >
+        <ShareIcon className="size-3.5" />
+      </Action>
+
       <Action
         className="text-muted-foreground/50 hover:text-foreground"
         onClick={handleCopy}
@@ -207,6 +240,9 @@ export const MessageActions = memo(
       return false;
     }
     if (prevProps.isLoading !== nextProps.isLoading) {
+      return false;
+    }
+    if (prevProps.onReply !== nextProps.onReply) {
       return false;
     }
 

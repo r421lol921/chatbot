@@ -21,6 +21,7 @@ import { GenerateArtifact } from "./generate-artifact";
 import { ActivityLabel } from "./activity-label";
 import { MapCard } from "./map-card";
 import { MessageActions } from "./message-actions";
+import { ReplyIcon } from "lucide-react";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { ProductList } from "./product-list";
@@ -32,15 +33,15 @@ import { Weather } from "./weather";
  * using a vertical slot-machine (odometer) animation.
  */
 function ReadReceipt({ isLastUserMessage, isLoading }: { isLastUserMessage: boolean; isLoading: boolean }) {
-  const [label, setLabel] = useState<"Delivered" | "Read">("Delivered");
+  const [label, setLabel] = useState<"Delivered" | "Seen">("Delivered");
 
   useEffect(() => {
     if (!isLastUserMessage) return;
     // Reset to "Delivered" whenever this becomes the last user message
     setLabel("Delivered");
-    // Flip to "Read" once the AI finishes responding
+    // Flip to "Seen" once the AI finishes responding
     if (!isLoading) {
-      const id = setTimeout(() => setLabel("Read"), 600);
+      const id = setTimeout(() => setLabel("Seen"), 600);
       return () => clearTimeout(id);
     }
   }, [isLoading, isLastUserMessage]);
@@ -73,6 +74,8 @@ const PurePreviewMessage = ({
   isReadonly,
   requiresScrollPadding: _requiresScrollPadding,
   onEdit,
+  onReply,
+  replyTo,
 }: {
   addToolApprovalResponse: UseChatHelpers<ChatMessage>["addToolApprovalResponse"];
   chatId: string;
@@ -85,6 +88,8 @@ const PurePreviewMessage = ({
   isReadonly: boolean;
   requiresScrollPadding: boolean;
   onEdit?: (message: ChatMessage) => void;
+  onReply?: (message: ChatMessage) => void;
+  replyTo?: { role: string; text: string } | null;
 }) => {
   const attachmentsFromMessage = message.parts.filter(
     (part) => part.type === "file"
@@ -196,8 +201,8 @@ const PurePreviewMessage = ({
         <div key={key} className="flex flex-col gap-2">
           {cleanText && (
             <MessageContent
-              className={cn("text-[13px] leading-[1.65]", {
-                "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
+              className={cn("text-[13px] leading-[1.65] break-words [word-break:break-word]", {
+                "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words [word-break:break-word] rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
                   message.role === "user",
               })}
               data-testid="message-content"
@@ -464,6 +469,7 @@ const PurePreviewMessage = ({
       key={`action-${message.id}`}
       message={message}
       onEdit={onEdit ? () => onEdit(message) : undefined}
+      onReply={onReply}
       vote={vote}
     />
   );
@@ -519,6 +525,14 @@ const PurePreviewMessage = ({
           <div className="flex min-w-0 flex-1 flex-col gap-2">{content}</div>
         ) : (
           <div className="flex flex-col items-end gap-0">
+            {replyTo && (
+              <div className="mb-1 flex max-w-[min(80%,56ch)] items-start gap-1.5 rounded-xl rounded-br-sm border border-border/30 bg-muted/60 px-3 py-1.5 text-[11px] text-muted-foreground">
+                <ReplyIcon className="mt-0.5 size-3 shrink-0 opacity-60" />
+                <span className="line-clamp-2 leading-relaxed opacity-80">
+                  {replyTo.text}
+                </span>
+              </div>
+            )}
             {content}
             <ReadReceipt isLastUserMessage={isLastUserMessage} isLoading={isLoading} />
           </div>

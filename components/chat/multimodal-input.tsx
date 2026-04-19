@@ -32,6 +32,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   PromptInput,
   PromptInputFooter,
   PromptInputSubmit,
@@ -40,6 +45,8 @@ import {
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
 import { PaperclipIcon, StopIcon } from "./icons";
+import { ReplyIcon, XIcon, SmileIcon } from "lucide-react";
+import type { ReplyContext } from "./messages";
 
 const STORAGE_SELECTED_MODEL_KEY = "lio-selected-model";
 import { PreviewAttachment } from "./preview-attachment";
@@ -69,6 +76,8 @@ function PureMultimodalInput({
   editingMessage,
   onCancelEdit,
   isLoading,
+  replyTo,
+  onClearReply,
 }: {
   chatId: string;
   input: string;
@@ -89,12 +98,22 @@ function PureMultimodalInput({
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
   isLoading?: boolean;
+  replyTo?: ReplyContext;
+  onClearReply?: () => void;
 }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const hasAutoFocused = useRef(false);
+
+  // Determine if sending is blocked because the on-device model is not yet downloaded
+  const webllmForBlock = useWebLLM();
+  const selectedModelForBlock = chatModels.find((m) => m.id === selectedModelId);
+  const isModelNotReady =
+    !!selectedModelForBlock?.webllmModelId &&
+    webllmForBlock.status !== "ready" &&
+    webllmForBlock.status !== "generating";
   useEffect(() => {
     if (!hasAutoFocused.current && width) {
       const timer = setTimeout(() => {
@@ -197,6 +216,7 @@ function PureMultimodalInput({
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const submitForm = useCallback(() => {
     window.history.pushState(
@@ -221,6 +241,7 @@ function PureMultimodalInput({
       ],
     });
 
+    onClearReply?.();
     setAttachments([]);
     setLocalStorageInput("");
     setInput("");
@@ -433,9 +454,27 @@ function PureMultimodalInput({
         )}
       </div>
 
+      {replyTo && (
+        <div className="flex items-center gap-2 rounded-xl border border-border/30 bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+          <ReplyIcon className="size-3 shrink-0 opacity-60" />
+          <span className="flex-1 truncate leading-relaxed opacity-80">
+            {replyTo.text}
+          </span>
+          <button
+            className="ml-auto rounded p-0.5 transition-colors hover:bg-muted hover:text-foreground"
+            onMouseDown={(e) => { e.preventDefault(); onClearReply?.(); }}
+            type="button"
+            aria-label="Cancel reply"
+          >
+            <XIcon className="size-3" />
+          </button>
+        </div>
+      )}
+
       <PromptInput
         className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
         onSubmit={() => {
+          if (isModelNotReady) return;
           if (input.startsWith("/")) {
             const query = input.slice(1).trim();
             const cmd = slashCommands.find((c) => c.name === query);
@@ -492,6 +531,11 @@ function PureMultimodalInput({
           data-testid="multimodal-input"
           onChange={handleInput}
           onKeyDown={(e) => {
+            // Block Enter when model is not downloaded
+            if (isModelNotReady && e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              return;
+            }
             if (slashOpen) {
               const filtered = slashCommands.filter((cmd) =>
                 cmd.name.startsWith(slashQuery.toLowerCase())
@@ -542,18 +586,27 @@ function PureMultimodalInput({
             />
           </PromptInputTools>
 
+          <EmojiPickerButton
+            onEmojiSelect={(emoji) => {
+              setInput((prev) => prev + emoji);
+              textareaRef.current?.focus();
+            }}
+            open={emojiOpen}
+            onOpenChange={setEmojiOpen}
+          />
+
           {status === "submitted" || status === "streaming" ? (
             <StopButton setMessages={setMessages} stop={stop} />
           ) : (
             <PromptInputSubmit
               className={cn(
                 "h-7 w-7 rounded-xl transition-all duration-200",
-                input.trim()
+                input.trim() && !isModelNotReady
                   ? "bg-foreground text-background hover:opacity-85 active:scale-95"
                   : "bg-muted text-muted-foreground/25 cursor-not-allowed"
               )}
               data-testid="send-button"
-              disabled={!input.trim() || uploadQueue.length > 0}
+              disabled={!input.trim() || uploadQueue.length > 0 || isModelNotReady}
               status={status}
               variant="secondary"
             >
@@ -593,10 +646,68 @@ export const MultimodalInput = memo(
     if (prevProps.messages.length !== nextProps.messages.length) {
       return false;
     }
+    if (prevProps.replyTo !== nextProps.replyTo) {
+      return false;
+    }
 
     return true;
   }
 );
+
+// Curated set of fun, expressive emojis for the picker
+const EMOJI_LIST = [
+  "😀","😂","🥹","😍","🤩","😎","🥳","😏","😜","🤔",
+  "😭","😤","😱","🤯","🥺","😴","🤗","😇","😈","🤠",
+  "👍","👎","❤️","🔥","✨","🎉","👀","💯","🙏","💀",
+  "🫡","🫠","🤌","💅","🫶","🦋","🌈","💫","⚡","🎯",
+];
+
+function EmojiPickerButton({
+  onEmojiSelect,
+  open,
+  onOpenChange,
+}: {
+  onEmojiSelect: (emoji: string) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          className="h-7 w-7 rounded-lg border border-border/40 p-1 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+          title="Pick an emoji"
+          variant="ghost"
+          type="button"
+        >
+          <SmileIcon size={14} style={{ width: 14, height: 14 }} />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="top"
+        className="w-[252px] p-2"
+        sideOffset={8}
+      >
+        <div className="grid grid-cols-8 gap-0.5">
+          {EMOJI_LIST.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors hover:bg-muted active:scale-90"
+              onClick={() => {
+                onEmojiSelect(emoji);
+                onOpenChange(false);
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function PureAttachmentsButton({
   fileInputRef,

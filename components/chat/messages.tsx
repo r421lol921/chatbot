@@ -9,6 +9,8 @@ import { useDataStream } from "./data-stream-provider";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
 
+export type ReplyContext = { role: string; text: string } | null;
+
 type MessagesProps = {
   addToolApprovalResponse: UseChatHelpers<ChatMessage>["addToolApprovalResponse"];
   chatId: string;
@@ -22,6 +24,8 @@ type MessagesProps = {
   isLoading?: boolean;
   selectedModelId: string;
   onEditMessage?: (message: ChatMessage) => void;
+  onReplyMessage?: (message: ChatMessage) => void;
+  replyContextMap?: Map<string, ReplyContext>;
 };
 
 function PureMessages({
@@ -37,6 +41,8 @@ function PureMessages({
   isLoading,
   selectedModelId: _selectedModelId,
   onEditMessage,
+  onReplyMessage,
+  replyContextMap,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -61,6 +67,17 @@ function PureMessages({
 
   return (
     <div className="relative flex-1 bg-background">
+      {messages.length > 0 && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 chat-bg-pattern"
+          style={{
+            backgroundImage: "url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/vilkasss-pattern-10102410-ZriUf9ZEzMxRd04Y0W3WJAxprkKhWg.jpg')",
+            backgroundSize: "380px 380px",
+            backgroundRepeat: "repeat",
+          }}
+        />
+      )}
       {messages.length === 0 && !isLoading && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
           <Greeting />
@@ -69,7 +86,6 @@ function PureMessages({
       <div
         className={cn(
           "absolute inset-0 touch-pan-y overflow-y-auto",
-          messages.length > 0 ? "bg-background" : "bg-transparent"
         )}
         ref={messagesContainerRef}
         style={isArtifactVisible ? { scrollbarWidth: "none" } : undefined}
@@ -92,6 +108,8 @@ function PureMessages({
                 key={message.id}
                 message={message}
                 onEdit={onEditMessage}
+                onReply={onReplyMessage}
+                replyTo={replyContextMap?.get(message.id) ?? null}
                 regenerate={regenerate}
                 requiresScrollPadding={
                   hasSentMessage && index === messages.length - 1

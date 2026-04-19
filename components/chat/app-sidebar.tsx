@@ -2,17 +2,21 @@
 
 import {
   BookOpenIcon,
+  HashIcon,
   PanelLeftIcon,
   PenSquareIcon,
+  PlusIcon,
   TrashIcon,
+  UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 type User = { id?: string; email?: string | null; name?: string | null; image?: string | null };
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
+import { CreateChannelModal, loadChannels, type Channel } from "./create-channel-modal";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
@@ -50,6 +54,12 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [channels, setChannels] = useState<Channel[]>([]);
+
+  useEffect(() => {
+    setChannels(loadChannels());
+  }, []);
 
   const handleDeleteAll = () => {
     setShowDeleteAllDialog(false);
@@ -147,6 +157,42 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+
+                {/* Create channel/group button */}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    onClick={() => setCreateModalOpen(true)}
+                    tooltip="Create"
+                  >
+                    <PlusIcon className="size-4" />
+                    <span className="text-[13px]">Create</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                {/* Channels list */}
+                {channels.length > 0 && (
+                  <>
+                    <div className="px-2 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 group-data-[collapsible=icon]:hidden">
+                      Channels
+                    </div>
+                    {channels.map((ch) => (
+                      <SidebarMenuItem key={ch.id}>
+                        <SidebarMenuButton
+                          className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                          tooltip={ch.name}
+                        >
+                          {ch.type === "channel" ? (
+                            <HashIcon className="size-4" />
+                          ) : (
+                            <UsersIcon className="size-4" />
+                          )}
+                          <span className="text-[13px] truncate">{ch.name}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -174,6 +220,12 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
+
+      <CreateChannelModal
+        isOpen={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onCreated={(ch) => setChannels((prev) => [ch, ...prev])}
+      />
 
       <AlertDialog
         onOpenChange={setShowDeleteAllDialog}
