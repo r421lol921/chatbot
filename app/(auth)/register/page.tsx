@@ -27,7 +27,7 @@ export default function Page() {
     } else if (state.status === "invalid_data") {
       toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
-      toast({ type: "success", description: "Account created! Check your email to confirm." });
+      toast({ type: "success", description: "Account created! Welcome to Lio." });
       setIsSuccessful(true);
       router.push("/");
       router.refresh();
