@@ -28,8 +28,8 @@ import { ProductList } from "./product-list";
 import { Weather } from "./weather";
 
 /**
- * iMessage-style Read / Delivered receipt under user messages.
- * Shows "Delivered" immediately, then flips to "Read" after a short delay
+ * iMessage-style Seen / Delivered receipt under user messages.
+ * Shows "Delivered" immediately, then flips to "Seen" after a short delay
  * using a vertical slot-machine (odometer) animation.
  */
 function ReadReceipt({ isLastUserMessage, isLoading }: { isLastUserMessage: boolean; isLoading: boolean }) {
