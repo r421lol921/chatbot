@@ -706,6 +706,7 @@ export type MessageIntent =
   | { type: "map"; location: string }
   | { type: "code"; topic: string }
   | { type: "generate"; generateType: "username" | "password" }
+  | { type: "library"; libraryKind: "essay" | "story" | "document"; topic: string }
   | { type: "text" };
 
 /**
@@ -742,7 +743,7 @@ export function detectIntent(userMessage: string): MessageIntent {
     }
   }
 
-  // ── Generate username ─────────────────────────────────────────────────
+  // ── Generate username ─────────────────────────────────────���───────────
   if (
     /\b(generate|create|make|give me|suggest)\b.*\b(username|user name|handle)\b/i.test(text) ||
     /\b(username|user name|handle)\b.*\b(generate|create|make|suggest)\b/i.test(text)
@@ -756,6 +757,33 @@ export function detectIntent(userMessage: string): MessageIntent {
     /\b(password|passphrase|pass)\b.*\b(generate|create|make|suggest)\b/i.test(text)
   ) {
     return { type: "generate", generateType: "password" };
+  }
+
+  // ── Essay ─────────────────────────────────────────────────────────────
+  if (
+    /\b(write|help me write|generate|create|draft|compose)\b.*\b(essay|article|paper|piece|blog post|opinion|editorial)\b/i.test(text)
+  ) {
+    const topicMatch = text.match(/(?:about|on|regarding|covering)\s+(.+?)(?:\s*[.?!]|$)/i);
+    const topic = topicMatch ? topicMatch[1].trim() : text.replace(/\b(write|generate|create|draft|compose|an?|essay|article|paper|piece|help me)\b/gi, "").trim() || "this topic";
+    return { type: "library", libraryKind: "essay", topic };
+  }
+
+  // ── Story / Book ──────────────────────────────────────────────────────
+  if (
+    /\b(write|generate|create|tell|make up|draft|compose)\b.*\b(story|tale|book|novel|fiction|short story|fable|narrative|chapter)\b/i.test(text)
+  ) {
+    const topicMatch = text.match(/(?:about|on|regarding|involving|with)\s+(.+?)(?:\s*[.?!]|$)/i);
+    const topic = topicMatch ? topicMatch[1].trim() : text.replace(/\b(write|generate|create|tell|make up|draft|compose|a|story|tale|book|novel|fiction|short|fable|narrative|chapter)\b/gi, "").trim() || "an adventure";
+    return { type: "library", libraryKind: "story", topic };
+  }
+
+  // ── Document / Report ─────────────────────────────────────────────────
+  if (
+    /\b(write|generate|create|draft|produce)\b.*\b(report|document|summary|memo|brief|proposal|letter|documentation)\b/i.test(text)
+  ) {
+    const topicMatch = text.match(/(?:about|on|for|regarding)\s+(.+?)(?:\s*[.?!]|$)/i);
+    const topic = topicMatch ? topicMatch[1].trim() : text.replace(/\b(write|generate|create|draft|produce|a|report|document|summary|memo|brief|proposal|letter)\b/gi, "").trim() || "this subject";
+    return { type: "library", libraryKind: "document", topic };
   }
 
   // ── Code generation ───────────────────────────────────────────────────
@@ -871,6 +899,126 @@ export function generateSmartResponse(userMessage: string): string {
 
   const pool = responses[chosenCategory] ?? responses.generic;
   return pickRandom(pool);
+}
+
+// ─── Library Content Generator ───────────────────────────────────────────────
+
+export function generateLibraryContent(kind: "essay" | "story" | "document", topic: string): string {
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const t = cap(topic.trim());
+
+  if (kind === "essay") {
+    return `# ${t}: An Exploration
+
+## Introduction
+
+${t} is a subject that has captivated thinkers, scholars, and curious minds for generations. Whether viewed through the lens of history, culture, or contemporary relevance, it offers profound insights into the human experience. This essay aims to unpack its key dimensions and examine why it continues to matter today.
+
+## Background
+
+The roots of ${t.toLowerCase()} can be traced back through centuries of thought and practice. Early perspectives were often shaped by the dominant values of their time — framing the subject in ways that now seem both prescient and limited. As society evolved, so too did our understanding, opening up new questions and frameworks.
+
+## Key Arguments
+
+**First**, the impact of ${t.toLowerCase()} on everyday life is undeniable. From the choices individuals make to the structures societies build, its influence permeates nearly every domain.
+
+**Second**, there is a growing body of evidence suggesting that how we engage with ${t.toLowerCase()} shapes outcomes in measurable ways. Studies, anecdotes, and lived experiences all point toward a consistent pattern.
+
+**Third**, the debates surrounding ${t.toLowerCase()} are not merely academic. They carry real stakes — for communities, institutions, and individuals navigating complex realities.
+
+## Counterarguments
+
+Of course, no exploration would be complete without acknowledging dissenting views. Critics argue that the framing of ${t.toLowerCase()} is often oversimplified, and that nuance gets lost in popular discourse. These are valid concerns worth sitting with.
+
+## Conclusion
+
+Ultimately, ${t.toLowerCase()} is not a topic with easy answers. It demands reflection, intellectual humility, and a willingness to engage with complexity. By doing so, we move closer to a more honest and generative conversation — one that honors the richness of the subject and the people it touches.`;
+  }
+
+  if (kind === "story") {
+    return `# ${t}
+
+The morning was ordinary enough. Pale light filtered through linen curtains, and the smell of coffee drifted down the hall. But something was different — a feeling, like the air had quietly rearranged itself.
+
+Maya stood at the window, watching leaves scatter across the courtyard below. She'd been thinking about ${t.toLowerCase()} for weeks, though she couldn't say exactly when the thought had first appeared. It arrived the way most significant things do: quietly, then all at once.
+
+"You're doing it again," said her friend Theo from the doorway, mug in hand, eyebrow raised.
+
+"Thinking," she admitted.
+
+"About?"
+
+She turned from the window. "About ${t.toLowerCase()}. About whether any of this means what we think it means."
+
+Theo crossed the room and handed her the second mug. "And what do you think it means?"
+
+Maya wrapped both hands around the warmth of the cup. Outside, a single bird landed on the courtyard wall and looked up, as if it too had an opinion.
+
+"I think," she said slowly, "that we've been asking the wrong questions."
+
+The bird took flight. The curtains shifted. And somewhere in the space between one breath and the next, something shifted too — the kind of shift that doesn't announce itself but changes everything that comes after.
+
+They talked for hours. About ${t.toLowerCase()}, about memory, about the strange architecture of belief. By the time the afternoon light turned amber and long, neither of them had resolved anything.
+
+But they had started — and sometimes, that's the whole story.
+
+*The End*`;
+  }
+
+  // document
+  return `# ${t} — Summary Report
+
+**Prepared by:** Lio AI  
+**Date:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}  
+**Status:** Draft
+
+---
+
+## Executive Summary
+
+This document provides a structured overview of ${t.toLowerCase()}, covering its key aspects, current state, and recommended next steps. It is intended to serve as a reference for stakeholders involved in decisions related to this subject.
+
+---
+
+## Background & Context
+
+${t} has emerged as an increasingly relevant topic within its domain. Understanding its foundations, recent developments, and implications is essential for informed decision-making.
+
+Key contextual factors include:
+- The historical development of ${t.toLowerCase()} and its evolution over time
+- The principal actors and stakeholders involved
+- The broader environment in which it operates
+
+---
+
+## Current State
+
+At present, ${t.toLowerCase()} can be characterised by the following:
+
+1. **Scope** — The subject encompasses a broad range of considerations, from technical requirements to human factors.
+2. **Challenges** — Key obstacles include resource constraints, coordination complexity, and knowledge gaps.
+3. **Opportunities** — Despite the challenges, there are clear opportunities for improvement and impact.
+
+---
+
+## Recommendations
+
+Based on the above analysis, the following actions are recommended:
+
+1. Conduct a thorough stakeholder mapping exercise to ensure all perspectives are represented.
+2. Establish clear metrics for success that can be tracked and reported on consistently.
+3. Prioritise quick wins that demonstrate value while longer-term initiatives are developed.
+4. Schedule regular reviews to assess progress and adapt to changing circumstances.
+
+---
+
+## Conclusion
+
+${t} represents both a challenge and an opportunity. With the right approach and commitment, meaningful progress is achievable. This document serves as a starting point for deeper engagement and action.
+
+---
+
+*Document generated by Lio AI — for review and editing by the responsible party.*`;
 }
 
 // ─── Username / Password Generator ───────────────────────────────────────────

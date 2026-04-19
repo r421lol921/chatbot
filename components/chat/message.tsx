@@ -156,12 +156,37 @@ const PurePreviewMessage = ({
     }
 
     if (type === "text") {
+      // Parse out <library-artifact> tag and persist to localStorage
+      const libraryMatch = part.text?.match(
+        /<library-artifact\s+kind="(essay|story|document)"\s+title="([^"]+)"\s+content="([^"]+)"\s*\/>/
+      );
+      if (libraryMatch && typeof window !== "undefined") {
+        try {
+          const [, libKind, libTitle, libContentEncoded] = libraryMatch;
+          const libContent = decodeURIComponent(libContentEncoded);
+          const STORAGE_KEY = "peytotoria_library";
+          const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+          // Only add if not already saved (idempotent on re-render)
+          const alreadyExists = existing.some((i: { title: string }) => i.title === libTitle);
+          if (!alreadyExists) {
+            existing.unshift({
+              id: crypto.randomUUID(),
+              title: libTitle,
+              kind: libKind,
+              content: libContent,
+              createdAt: new Date().toISOString(),
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+          }
+        } catch {
+          // Non-critical — ignore storage errors
+        }
+      }
+
       // Parse out <generate-artifact> tag if present
       const generateMatch = part.text?.match(
         /<generate-artifact\s+kind="(username|password)"\s+value="([^"]+)"\s+expiry-label="([^"]+)"\s+expiry-hours="(\d+)"\s*\/>/
       );
-      const cleanText = part.text?.replace(/<generate-artifact[^/]*\/>/, "").trim();
-
       return (
         <div key={key} className="flex flex-col gap-2">
           {cleanText && (

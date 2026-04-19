@@ -36,7 +36,7 @@ import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
-import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse, generateUsername, generatePassword, pickExpiry } from "@/lib/ai/smart-responses";
+import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse, generateUsername, generatePassword, pickExpiry, generateLibraryContent } from "@/lib/ai/smart-responses";
 import { executeGetWeather } from "@/lib/ai/tools/get-weather";
 import { executeGetMap } from "@/lib/ai/tools/get-map";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
@@ -340,6 +340,23 @@ export async function POST(request: Request) {
           for (const char of fullText) {
             dataStream.write({ type: "text-delta", id: messageId, delta: char });
             await new Promise((r) => setTimeout(r, 20));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
+
+        // ── Library (essay / story / document) intent ──────────────────
+        } else if (intent.type === "library") {
+          const content = generateLibraryContent(intent.libraryKind, intent.topic);
+          // Extract title from first heading line
+          const titleLine = content.match(/^#\s+(.+)/m);
+          const title = titleLine ? titleLine[1].trim() : intent.topic;
+          const intro = `Here's your ${intent.libraryKind} on **${intent.topic}** — it's been saved to your Library!\n\n`;
+          // Emit a library-artifact marker so the client can write to localStorage
+          const artifact = `\n\n<library-artifact kind="${intent.libraryKind}" title="${title.replace(/"/g, "'")}" content="${encodeURIComponent(content)}" />`;
+          const fullText = intro + content + artifact;
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of fullText) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 8));
           }
           dataStream.write({ type: "text-end", id: messageId });
 

@@ -1,11 +1,9 @@
 "use server";
 
-import { generateText, type UIMessage } from "ai";
+import { type UIMessage } from "ai";
 import { cookies } from "next/headers";
 import { auth } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
-import { titlePrompt } from "@/lib/ai/prompts";
-import { getTitleModel } from "@/lib/ai/providers";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getChatById,
@@ -24,15 +22,15 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
-  const { text } = await generateText({
-    model: getTitleModel(),
-    system: titlePrompt,
-    prompt: getTextFromMessage(message),
-  });
-  return text
-    .replace(/^[#*"\s]+/, "")
-    .replace(/["]+$/, "")
-    .trim();
+  // Derive a title locally from the message text — no AI Gateway call needed.
+  // This avoids the 403 "credit card required" error from the AI Gateway
+  // and prevents the unhandled rejection that was crashing the stream.
+  const raw = getTextFromMessage(message).trim();
+  if (!raw) return "New Chat";
+
+  // Capitalise first letter, truncate at ~60 chars, strip trailing punctuation
+  const trimmed = raw.length > 60 ? `${raw.slice(0, 57).trimEnd()}…` : raw;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
