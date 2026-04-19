@@ -705,6 +705,7 @@ export type MessageIntent =
   | { type: "weather"; location: string }
   | { type: "map"; location: string }
   | { type: "code"; topic: string }
+  | { type: "generate"; generateType: "username" | "password" }
   | { type: "text" };
 
 /**
@@ -739,6 +740,22 @@ export function detectIntent(userMessage: string): MessageIntent {
     if (location.length > 1) {
       return { type: "map", location };
     }
+  }
+
+  // ── Generate username ─────────────────────────────────────────────────
+  if (
+    /\b(generate|create|make|give me|suggest)\b.*\b(username|user name|handle)\b/i.test(text) ||
+    /\b(username|user name|handle)\b.*\b(generate|create|make|suggest)\b/i.test(text)
+  ) {
+    return { type: "generate", generateType: "username" };
+  }
+
+  // ── Generate password ─────────────────────────────────────────────────
+  if (
+    /\b(generate|create|make|give me|suggest)\b.*\b(password|passphrase|pass)\b/i.test(text) ||
+    /\b(password|passphrase|pass)\b.*\b(generate|create|make|suggest)\b/i.test(text)
+  ) {
+    return { type: "generate", generateType: "password" };
   }
 
   // ── Code generation ───────────────────────────────────────────────────
@@ -854,6 +871,62 @@ export function generateSmartResponse(userMessage: string): string {
 
   const pool = responses[chosenCategory] ?? responses.generic;
   return pickRandom(pool);
+}
+
+// ─── Username / Password Generator ───────────────────────────────────────────
+
+const ADJECTIVES = ["swift", "bold", "lunar", "neon", "frost", "ghost", "silent", "pixel", "storm", "wild", "nova", "echo", "blaze", "cyber", "silver", "rogue", "night", "apex", "void", "core"];
+const NOUNS = ["wolf", "fox", "hawk", "byte", "node", "star", "rider", "spark", "blade", "drift", "zero", "nova", "flux", "gale", "crest", "peak", "shade", "orbit", "maze", "crypt"];
+const CHAR_POOLS = {
+  upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  lower: "abcdefghijklmnopqrstuvwxyz",
+  digits: "0123456789",
+  symbols: "!@#$%^&*_-+=",
+};
+
+function pickFromPool(pool: string, n: number): string {
+  let out = "";
+  for (let i = 0; i < n; i++) out += pool[Math.floor(Math.random() * pool.length)];
+  return out;
+}
+
+export function generateUsername(): string {
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+  const num = Math.floor(Math.random() * 900) + 100;
+  const styles = [
+    `${adj}_${noun}${num}`,
+    `${adj}${noun.charAt(0).toUpperCase() + noun.slice(1)}`,
+    `${noun}${adj.charAt(0).toUpperCase() + adj.slice(1)}${num}`,
+    `${adj}${num}${noun}`,
+  ];
+  return styles[Math.floor(Math.random() * styles.length)];
+}
+
+export function generatePassword(): string {
+  const length = 16;
+  const all = CHAR_POOLS.upper + CHAR_POOLS.lower + CHAR_POOLS.digits + CHAR_POOLS.symbols;
+  // Guarantee at least one from each pool
+  let pwd = pickFromPool(CHAR_POOLS.upper, 2) +
+    pickFromPool(CHAR_POOLS.lower, 4) +
+    pickFromPool(CHAR_POOLS.digits, 3) +
+    pickFromPool(CHAR_POOLS.symbols, 3) +
+    pickFromPool(all, length - 12);
+  // Shuffle
+  return pwd.split("").sort(() => 0.5 - Math.random()).join("");
+}
+
+/**
+ * Picks a human-readable availability duration for generated secrets.
+ */
+export function pickExpiry(): { label: string; hours: number } {
+  const options = [
+    { label: "5 hours", hours: 5 },
+    { label: "12 hours", hours: 12 },
+    { label: "24 hours", hours: 24 },
+    { label: "48 hours", hours: 48 },
+  ];
+  return options[Math.floor(Math.random() * options.length)];
 }
 
 /**

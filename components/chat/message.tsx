@@ -17,6 +17,7 @@ import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
 import { SparklesIcon } from "./icons";
+import { GenerateArtifact } from "./generate-artifact";
 import { ActivityLabel } from "./activity-label";
 import { MapCard } from "./map-card";
 import { MessageActions } from "./message-actions";
@@ -155,17 +156,34 @@ const PurePreviewMessage = ({
     }
 
     if (type === "text") {
+      // Parse out <generate-artifact> tag if present
+      const generateMatch = part.text?.match(
+        /<generate-artifact\s+kind="(username|password)"\s+value="([^"]+)"\s+expiry-label="([^"]+)"\s+expiry-hours="(\d+)"\s*\/>/
+      );
+      const cleanText = part.text?.replace(/<generate-artifact[^/]*\/>/, "").trim();
+
       return (
-        <MessageContent
-          className={cn("text-[13px] leading-[1.65]", {
-            "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
-              message.role === "user",
-          })}
-          data-testid="message-content"
-          key={key}
-        >
-          <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
-        </MessageContent>
+        <div key={key} className="flex flex-col gap-2">
+          {cleanText && (
+            <MessageContent
+              className={cn("text-[13px] leading-[1.65]", {
+                "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
+                  message.role === "user",
+              })}
+              data-testid="message-content"
+            >
+              <MessageResponse>{sanitizeText(cleanText)}</MessageResponse>
+            </MessageContent>
+          )}
+          {generateMatch && (
+            <GenerateArtifact
+              kind={generateMatch[1] as "username" | "password"}
+              value={generateMatch[2]}
+              expiryLabel={generateMatch[3]}
+              expiryHours={Number(generateMatch[4])}
+            />
+          )}
+        </div>
       );
     }
 

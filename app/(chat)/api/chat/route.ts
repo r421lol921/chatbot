@@ -35,7 +35,7 @@ import { checkIpRateLimit } from "@/lib/ratelimit";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
-import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse } from "@/lib/ai/smart-responses";
+import { generateSmartResponse, generateThinkingText, detectIntent, generateCodeResponse, generateUsername, generatePassword, pickExpiry } from "@/lib/ai/smart-responses";
 import { executeGetWeather } from "@/lib/ai/tools/get-weather";
 import { executeGetMap } from "@/lib/ai/tools/get-map";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
@@ -195,11 +195,44 @@ export async function POST(request: Request) {
       return "";
     })();
 
+    // Detect if the user sent image file parts
+    const hasImageAttachment = (() => {
+      if (!message?.parts) return false;
+      return message.parts.some((p: Record<string, unknown>) => {
+        if (p.type !== "file") return false;
+        const mediaType = String(p.mediaType ?? "");
+        return mediaType.startsWith("image/");
+      });
+    })();
+
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
         const reasoningId = generateId();
         const messageId = generateId();
+
+        // ── Image attachment response ───────────────────────────────────────
+        if (hasImageAttachment) {
+          const imageResponses = [
+            `I can see you uploaded an image! While I can't analyze the visual content directly, I can see it was attached. If you have a question about it or want to describe what you're seeing, I'm happy to help!`,
+            `Got the image! I can't visually process it on my end, but if you tell me what's in it or what you need help with, I'll do my best to assist.`,
+            `I received your image upload. I can't read or analyze images directly — describe what's in it or ask a specific question and I'll help from there!`,
+          ];
+          const resp = imageResponses[Math.floor(Math.random() * imageResponses.length)];
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of resp) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 30));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
+
+          if (titlePromise) {
+            const title = await titlePromise;
+            dataStream.write({ type: "data-chat-title", data: title });
+            updateChatTitleById({ chatId: id, title });
+          }
+          return;
+        }
 
         // Detect intent: weather, map, code, or generic text
         const intent = detectIntent(userMessageText);
@@ -282,6 +315,23 @@ export async function POST(request: Request) {
           for (const char of mapText) {
             dataStream.write({ type: "text-delta", id: messageId, delta: char });
             await new Promise((r) => setTimeout(r, 30));
+          }
+          dataStream.write({ type: "text-end", id: messageId });
+
+        // ── Generate intent (username / password) ──────────────────────
+        } else if (intent.type === "generate") {
+          const isPassword = intent.generateType === "password";
+          const generated = isPassword ? generatePassword() : generateUsername();
+          const expiry = pickExpiry();
+          const intro = isPassword
+            ? `Here's a secure encrypted password I generated for you:`
+            : `Here's a username I generated for you:`;
+          const artifact = `\n\n<generate-artifact kind="${intent.generateType}" value="${generated}" expiry-label="${expiry.label}" expiry-hours="${expiry.hours}" />`;
+          const fullText = intro + artifact;
+          dataStream.write({ type: "text-start", id: messageId });
+          for (const char of fullText) {
+            dataStream.write({ type: "text-delta", id: messageId, delta: char });
+            await new Promise((r) => setTimeout(r, 20));
           }
           dataStream.write({ type: "text-end", id: messageId });
 

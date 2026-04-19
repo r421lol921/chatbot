@@ -128,13 +128,23 @@ function EncryptedChatsSection() {
             <SidebarMenuItem key={chat.id} className="group/enc-item">
               <SidebarMenuButton
                 isActive={chat.id === id}
-                className="flex items-center justify-between rounded-lg text-[13px] text-sidebar-foreground/80 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground pr-1"
+                className="flex items-start justify-between rounded-lg text-[13px] text-sidebar-foreground/80 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground pr-1 h-auto py-1"
                 onClick={() => {
                   setOpenMobile(false);
                   router.push(`/chat/${chat.id}`);
                 }}
               >
-                <span className="truncate flex-1">{chat.title}</span>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <span className="truncate">{chat.title}</span>
+                  <span className="flex items-center gap-1 text-[10px] text-sidebar-foreground/50 font-normal">
+                    <svg viewBox="0 0 16 16" className="size-2.5 shrink-0" fill="none" aria-hidden="true">
+                      <rect x="3" y="7" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                      <path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                      <circle cx="8" cy="11" r="1" fill="currentColor"/>
+                    </svg>
+                    <span className="font-semibold text-emerald-500/80">Encrypted</span>
+                  </span>
+                </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -171,7 +181,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
   } = useSWRInfinite<ChatHistory>(
     user ? getChatHistoryPaginationKey : () => null,
     fetcher,
-    { fallbackData: [], revalidateOnFocus: false }
+    { fallbackData: [], revalidateOnFocus: true, revalidateOnMount: true }
   );
 
   const router = useRouter();
