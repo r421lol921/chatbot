@@ -802,7 +802,6 @@ function PureModelSelectorCompact({
       <WebLLMInstallModal
         open={showInstallModal}
         onClose={() => setShowInstallModal(false)}
-        selectedChatModel={selectedModelId}
         onActivate={() => {
           webllm.setActive(true);
           if (selectedModelId !== "lio-1" && selectedModelId !== "lio-2") {
