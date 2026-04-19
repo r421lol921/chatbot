@@ -19,11 +19,14 @@ export function MessageReasoning({
   isLoading,
   reasoning,
 }: MessageReasoningProps) {
-  const [hasBeenStreaming, setHasBeenStreaming] = useState(isLoading);
-  const startTimeRef = useRef<number | null>(isLoading ? Date.now() : null);
+  // Always start as streaming/thinking — this ensures the animation shows even
+  // when the reasoning part mounts after the stream has already finished
+  // (which happens with Lio 1.0 since it doesn't emit native reasoning tokens).
+  const [hasBeenStreaming, setHasBeenStreaming] = useState(true);
+  const startTimeRef = useRef<number | null>(Date.now());
   const [duration, setDuration] = useState<number | undefined>(undefined);
-  // Controls the synthetic isStreaming state so we can hold it open for MIN_THINKING_MS
-  const [syntheticStreaming, setSyntheticStreaming] = useState(isLoading);
+  // Always start synthetic streaming so the "Thinking..." animation always shows.
+  const [syntheticStreaming, setSyntheticStreaming] = useState(true);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
