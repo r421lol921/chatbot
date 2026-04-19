@@ -172,16 +172,9 @@ const LiveThinkingCounter: FC = () => {
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return (
-      <span className="inline-flex items-center gap-2.5">
-        {/* Pulsing orb — OG ChatGPT-style thinking indicator */}
-        <span className="relative flex size-3.5 shrink-0">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
-          <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-[13px] font-normal text-muted-foreground">
-          <Shimmer duration={1.2}>Thinking</Shimmer>
-          <LiveThinkingCounter />
-        </span>
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-normal text-muted-foreground">
+        <Shimmer duration={1.2}>Thinking</Shimmer>
+        <LiveThinkingCounter />
       </span>
     );
   }

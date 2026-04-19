@@ -1,7 +1,6 @@
 "use client";
 
 import { useWebLLM } from "@/hooks/use-webllm";
-import { chatModels } from "@/lib/ai/models";
 import { cn } from "@/lib/utils";
 import { X, Cpu, HardDrive, Zap, Shield, ChevronRight, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
@@ -21,12 +20,6 @@ const LIO1_SPECS = [
   { icon: Shield, label: "Privacy", value: "100% local" },
 ] as const;
 
-const LIO2_SPECS = [
-  { icon: HardDrive, label: "Model size", value: "~600 MB" },
-  { icon: Cpu, label: "Requires", value: "WebGPU" },
-  { icon: Zap, label: "Speed", value: "~30 tok/s" },
-  { icon: Shield, label: "Privacy", value: "100% local" },
-] as const;
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 MB";
@@ -35,16 +28,12 @@ function formatBytes(bytes: number): string {
   return `${(mb / 1024).toFixed(2)} GB`;
 }
 
-export function WebLLMInstallModal({ open, onClose, selectedChatModel, onActivate }: Props) {
+export function WebLLMInstallModal({ open, onClose, onActivate }: Omit<Props, "selectedChatModel">) {
   const webllm = useWebLLM();
 
   if (!open) return null;
 
-  // Determine if we're loading Lio 2.1 (TinyLlama)
-  const isLio2 = selectedChatModel === "lio-2";
-  const chatModel = chatModels.find((m) => m.id === (isLio2 ? "lio-2" : "lio-1"));
-  const targetWebllmModelId = chatModel?.webllmModelId ?? webllm.modelId;
-  const MODEL_SPECS = isLio2 ? LIO2_SPECS : LIO1_SPECS;
+  const MODEL_SPECS = LIO1_SPECS;
 
   const isIdle = webllm.status === "idle" || webllm.status === "error";
   const isLoading = webllm.status === "loading";
@@ -57,11 +46,7 @@ export function WebLLMInstallModal({ open, onClose, selectedChatModel, onActivat
       onActivate();
       onClose();
     } else if (isIdle) {
-      if (isLio2 && targetWebllmModelId) {
-        webllm.switchModel(targetWebllmModelId);
-      } else {
-        webllm.loadModel();
-      }
+      webllm.loadModel();
     }
   };
 
@@ -97,12 +82,10 @@ export function WebLLMInstallModal({ open, onClose, selectedChatModel, onActivat
                 </span>
               </div>
               <h2 className="text-xl font-semibold text-foreground text-balance">
-                Run {isLio2 ? "Lio 2.1" : "Lio"} locally
+                Run Lio 1.0 locally
               </h2>
               <p className="mt-1 text-sm text-muted-foreground text-balance">
-                {isLio2
-                  ? "Download TinyLlama-1.1B — a compact 1.1B parameter model that runs entirely in your browser. No data ever leaves your device."
-                  : "Download a compact model that runs entirely in your browser. No data ever leaves your device."}
+                Download the 500MB Lio 1.0 model that runs entirely in your browser. No data ever leaves your device.
               </p>
             </div>
             {!isLoading && (
@@ -138,14 +121,14 @@ export function WebLLMInstallModal({ open, onClose, selectedChatModel, onActivat
           <div className="mx-6 mt-3 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2.5">
             <div>
               <p className="text-[12px] font-medium text-foreground">
-                {isLio2 ? "TinyLlama-1.1B-Chat" : "Lio 1.0 500MB"}
+                Lio 1.0 500MB
               </p>
               <p className="text-[11px] text-muted-foreground">
-                {isLio2 ? "INT4 quantised · MLC format · 1k context" : "INT4 quantised · MLC format"}
+                INT4 quantised · MLC format
               </p>
             </div>
             <span className="text-[10px] font-semibold bg-foreground/10 text-foreground rounded-full px-2 py-0.5">
-              {isLio2 ? "q4f32" : "q4f16"}
+              q4f16
             </span>
           </div>
 

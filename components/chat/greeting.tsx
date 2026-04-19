@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
+import { LioLogo } from "./lio-logo";
 
 export const Greeting = () => {
   const orbRef = useRef<HTMLDivElement>(null);
@@ -37,6 +38,14 @@ export const Greeting = () => {
             filter: "blur(18px)",
           }}
         />
+        <motion.div
+          animate={{ opacity: 1, y: 0 }}
+          className="relative flex flex-col items-center gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          transition={{ delay: 0.25, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <LioLogo size={52} showTooltip={true} />
+        </motion.div>
         <motion.div
           animate={{ opacity: 1, y: 0 }}
           className="relative text-center font-semibold text-2xl tracking-tight text-foreground md:text-3xl"

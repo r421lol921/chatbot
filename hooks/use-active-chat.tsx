@@ -3,7 +3,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   type Dispatch,
@@ -16,9 +16,7 @@ import {
   useState,
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import { unstable_serialize } from "swr/infinite";
 import { useDataStream } from "@/components/chat/data-stream-provider";
-import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { toast } from "@/components/chat/toast";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { useAutoResume } from "@/hooks/use-auto-resume";
@@ -56,6 +54,7 @@ function extractChatId(pathname: string): string | null {
 
 export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { setDataStream } = useDataStream();
   const { mutate } = useSWRConfig();
 
@@ -70,6 +69,9 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   prevPathnameRef.current = pathname;
 
   const chatId = chatIdFromUrl ?? newChatIdRef.current;
+
+  const chatIdRef = useRef(chatId);
+  chatIdRef.current = chatId;
 
   const [currentModelId, setCurrentModelId] = useState(DEFAULT_CHAT_MODEL);
   const currentModelIdRef = useRef(currentModelId);
@@ -151,7 +153,17 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
     },
     onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      // Revalidate all /api/history pages so the sidebar refreshes
+      mutate(
+        (key: unknown) =>
+          typeof key === "string" && key.includes("/api/history"),
+        undefined,
+        { revalidate: true }
+      );
+      // If we started from the home page, push to the chat URL so it's bookmarkable
+      if (window.location.pathname === "/" || window.location.pathname === (process.env.NEXT_PUBLIC_BASE_PATH ?? "")) {
+        router.push(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatIdRef.current}`);
+      }
     },
     onError: (error) => {
       if (error instanceof ChatbotError) {

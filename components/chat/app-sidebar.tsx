@@ -78,7 +78,11 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
                   tooltip="PeytOtoria"
                 >
                   <Link href="/" onClick={() => setOpenMobile(false)}>
-                    <img src="/images/logo.png" alt="PeytOtoria" className="size-6 rounded-full" />
+                    <img
+                      src="/images/logo.png"
+                      alt="PeytOtoria"
+                      className="size-6 rounded-full object-cover shrink-0"
+                    />
                   </Link>
                 </SidebarMenuButton>
                 <Tooltip>

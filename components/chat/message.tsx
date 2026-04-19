@@ -17,6 +17,7 @@ import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
 import { SparklesIcon } from "./icons";
+import { GenerateArtifact } from "./generate-artifact";
 import { ActivityLabel } from "./activity-label";
 import { MapCard } from "./map-card";
 import { MessageActions } from "./message-actions";
@@ -155,17 +156,64 @@ const PurePreviewMessage = ({
     }
 
     if (type === "text") {
+      // Parse out <library-artifact> tag and persist to localStorage
+      const libraryMatch = part.text?.match(
+        /<library-artifact\s+kind="(essay|story|document)"\s+title="([^"]+)"\s+content="([^"]+)"\s*\/>/
+      );
+      if (libraryMatch && typeof window !== "undefined") {
+        try {
+          const [, libKind, libTitle, libContentEncoded] = libraryMatch;
+          const libContent = decodeURIComponent(libContentEncoded);
+          const STORAGE_KEY = "peytotoria_library";
+          const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+          // Only add if not already saved (idempotent on re-render)
+          const alreadyExists = existing.some((i: { title: string }) => i.title === libTitle);
+          if (!alreadyExists) {
+            existing.unshift({
+              id: crypto.randomUUID(),
+              title: libTitle,
+              kind: libKind,
+              content: libContent,
+              createdAt: new Date().toISOString(),
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+          }
+        } catch {
+          // Non-critical — ignore storage errors
+        }
+      }
+
+      // Parse out <generate-artifact> tag if present
+      const generateMatch = part.text?.match(
+        /<generate-artifact\s+kind="(username|password)"\s+value="([^"]+)"\s+expiry-label="([^"]+)"\s+expiry-hours="(\d+)"\s*\/>/
+      );
+      // Strip both artifact tags from visible text
+      const cleanText = (part.text ?? "")
+        .replace(/<library-artifact[^/]*\/>/g, "")
+        .replace(/<generate-artifact[^/]*\/>/g, "")
+        .trim();
       return (
-        <MessageContent
-          className={cn("text-[13px] leading-[1.65]", {
-            "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
-              message.role === "user",
-          })}
-          data-testid="message-content"
-          key={key}
-        >
-          <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
-        </MessageContent>
+        <div key={key} className="flex flex-col gap-2">
+          {cleanText && (
+            <MessageContent
+              className={cn("text-[13px] leading-[1.65]", {
+                "w-fit max-w-[min(80%,56ch)] overflow-hidden break-words rounded-2xl rounded-br-lg border border-border/30 bg-gradient-to-br from-secondary to-muted px-3.5 py-2 shadow-[var(--shadow-card)]":
+                  message.role === "user",
+              })}
+              data-testid="message-content"
+            >
+              <MessageResponse>{sanitizeText(cleanText)}</MessageResponse>
+            </MessageContent>
+          )}
+          {generateMatch && (
+            <GenerateArtifact
+              kind={generateMatch[1] as "username" | "password"}
+              value={generateMatch[2]}
+              expiryLabel={generateMatch[3]}
+              expiryHours={Number(generateMatch[4])}
+            />
+          )}
+        </div>
       );
     }
 
