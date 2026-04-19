@@ -665,8 +665,11 @@ function PureModelSelectorCompact({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedModelId]);
 
-  const isOnDevice = webllm.isActive;
-  const isWebLLMLoading = webllm.status === "loading";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const isOnDevice = mounted && webllm.isActive;
+  const isWebLLMLoading = mounted && webllm.status === "loading";
 
   return (
     <>

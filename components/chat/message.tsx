@@ -187,6 +187,11 @@ const PurePreviewMessage = ({
       const generateMatch = part.text?.match(
         /<generate-artifact\s+kind="(username|password)"\s+value="([^"]+)"\s+expiry-label="([^"]+)"\s+expiry-hours="(\d+)"\s*\/>/
       );
+      // Strip both artifact tags from visible text
+      const cleanText = (part.text ?? "")
+        .replace(/<library-artifact[^/]*\/>/g, "")
+        .replace(/<generate-artifact[^/]*\/>/g, "")
+        .trim();
       return (
         <div key={key} className="flex flex-col gap-2">
           {cleanText && (
