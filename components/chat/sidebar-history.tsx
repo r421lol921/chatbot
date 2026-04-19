@@ -2,7 +2,7 @@
 
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
-import { LockIcon, ShieldAlertIcon, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 type User = { id?: string; email?: string | null; name?: string | null; image?: string | null };
 import { useState } from "react";
@@ -271,6 +271,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
 
   return (
     <>
+      <EncryptedChatsSection />
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/70">
           History
