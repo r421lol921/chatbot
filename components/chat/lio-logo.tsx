@@ -18,14 +18,15 @@ interface LioLogoProps {
 export function LioLogo({ size = 32, className = "", showTooltip = true }: LioLogoProps) {
   const img = (
     <Image
-      src="/images/lio-logo.png"
+      src="/images/lio-icon.png"
       alt="Lio"
       width={size}
       height={size}
+      style={{ width: size, height: size }}
       className={[
-        "select-none",
-        // dark mode → white, light mode → black via CSS filter
-        "dark:invert dark:brightness-200 brightness-0",
+        "select-none shrink-0",
+        // Invert on dark theme so it goes white; stays dark on light theme
+        "dark:invert",
         className,
       ]
         .filter(Boolean)

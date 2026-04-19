@@ -44,7 +44,6 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { LioLogo } from "./lio-logo";
 
 export function AppSidebar({ user, userType }: { user: User | undefined; userType?: UserType }) {
   const router = useRouter();
@@ -76,10 +75,14 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
                 <SidebarMenuButton
                   asChild
                   className="size-8 !px-0 items-center justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
-                  tooltip="Lio 1.0"
+                  tooltip="PeytOtoria"
                 >
                   <Link href="/" onClick={() => setOpenMobile(false)}>
-                    <LioLogo size={26} showTooltip={false} />
+                    <img
+                      src="/images/logo.png"
+                      alt="PeytOtoria"
+                      className="size-6 rounded-full object-cover shrink-0"
+                    />
                   </Link>
                 </SidebarMenuButton>
                 <Tooltip>

@@ -20,6 +20,7 @@ import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
   deleteChatById,
+  ensureUserRow,
   getChatById,
   getLastUserMessageTime,
   getMessageCountByUserId,
@@ -96,6 +97,13 @@ export async function POST(request: Request) {
       }
       messagesFromDb = await getMessagesByChatId({ id });
     } else if (message?.role === "user") {
+      // Ensure a User row exists before inserting the Chat (FK guard)
+      await ensureUserRow({
+        id: session.user.id,
+        email: session.user.email ?? "",
+        type: session.user.type,
+      });
+
       await saveChat({
         id,
         userId: session.user.id,

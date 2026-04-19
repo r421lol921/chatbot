@@ -57,6 +57,40 @@ const sqlClient = postgres(connectionString, {
 });
 export const db = drizzle(sqlClient);
 
+/**
+ * Upserts a User row by Supabase auth UUID so FK constraints on Chat/Message
+ * are satisfied even before the auth trigger fires.
+ */
+export async function ensureUserRow({
+  id,
+  email,
+  type,
+}: {
+  id: string;
+  email: string;
+  type: string;
+}) {
+  try {
+    await db
+      .insert(user)
+      .values({
+        id,
+        email,
+        password: null,
+        isAnonymous: type === "guest",
+        userType: type === "guest" ? "guest" : "regular",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: user.id,
+        set: { email, updatedAt: new Date() },
+      });
+  } catch {
+    // Row already exists or concurrent insert — safe to ignore
+  }
+}
+
 export async function getUser(email: string): Promise<User[]> {
   try {
     return await db.select().from(user).where(eq(user.email, email));

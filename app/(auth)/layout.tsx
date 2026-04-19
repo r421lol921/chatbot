@@ -21,7 +21,7 @@ export default function AuthLayout({
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-10">
           <div className="flex flex-col gap-2">
             <div className="mb-3">
-              <LioLogo size={44} showTooltip={true} />
+              <LioLogo size={48} showTooltip={true} />
             </div>
             {children}
           </div>
