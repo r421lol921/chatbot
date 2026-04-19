@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveChat } from "@/hooks/use-active-chat";
+import { useEncryptedChats } from "@/hooks/use-encrypted-chats";
 import { useWebLLM } from "@/hooks/use-webllm";
 import {
   initialArtifactData,
@@ -45,6 +46,9 @@ export function ChatShell() {
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
   
+  const { isEncryptedChat } = useEncryptedChats();
+  const isEncrypted = isEncryptedChat(chatId);
+
   const webllm = useWebLLM();
   const [localStatus, setLocalStatus] = useState<"ready" | "submitted">("ready");
   
@@ -181,6 +185,7 @@ export function ChatShell() {
         >
           <ChatHeader
             chatId={chatId}
+            isEncrypted={isEncrypted}
             isReadonly={isReadonly}
             selectedVisibilityType={visibilityType}
           />

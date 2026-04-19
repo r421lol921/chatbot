@@ -2,6 +2,7 @@
 
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
+import { Trash2Icon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 type User = { id?: string; email?: string | null; name?: string | null; image?: string | null };
 import { useState } from "react";
@@ -22,8 +23,11 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useEncryptedChats } from "@/hooks/use-encrypted-chats";
 import type { Chat } from "@/lib/db/schema";
 import { fetcher } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
@@ -96,6 +100,61 @@ export function getChatHistoryPaginationKey(
   }
 
   return `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
+}
+
+function EncryptedChatsSection() {
+  const { setOpenMobile } = useSidebar();
+  const pathname = usePathname();
+  const router = useRouter();
+  const id = pathname?.startsWith("/chat/") ? pathname.split("/")[2] : null;
+  const { chats, deleteChat, maxChats } = useEncryptedChats();
+
+  if (chats.length === 0) return null;
+
+  return (
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/70">
+        {/* Cutout lock icon */}
+        <svg className="size-3 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="3" y="7" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+          <path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+          <circle cx="8" cy="11" r="1" fill="currentColor"/>
+        </svg>
+        Encrypted ({chats.length}/{maxChats})
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {chats.map((chat) => (
+            <SidebarMenuItem key={chat.id} className="group/enc-item">
+              <SidebarMenuButton
+                isActive={chat.id === id}
+                className="flex items-center justify-between rounded-lg text-[13px] text-sidebar-foreground/80 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground pr-1"
+                onClick={() => {
+                  setOpenMobile(false);
+                  router.push(`/chat/${chat.id}`);
+                }}
+              >
+                <span className="truncate flex-1">{chat.title}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteChat(chat.id);
+                    if (id === chat.id) router.replace("/");
+                    toast.success("Encrypted chat deleted");
+                  }}
+                  className="opacity-0 group-hover/enc-item:opacity-100 ml-1 shrink-0 text-sidebar-foreground/40 hover:text-destructive transition-all"
+                  type="button"
+                  aria-label="Delete encrypted chat"
+                >
+                  <Trash2Icon className="size-3" />
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
 }
 
 export function SidebarHistory({ user }: { user: User | undefined }) {
@@ -212,6 +271,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
 
   return (
     <>
+      <EncryptedChatsSection />
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/70">
           History

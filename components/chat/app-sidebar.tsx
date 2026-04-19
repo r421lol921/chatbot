@@ -1,11 +1,9 @@
 "use client";
 
 import {
-  CreditCardIcon,
-  MessageSquareIcon,
+  BookOpenIcon,
   PanelLeftIcon,
   PenSquareIcon,
-  SlidersHorizontalIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,7 +18,6 @@ import {
   SidebarHistory,
 } from "@/components/chat/sidebar-history";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
-import { PromptEditorModal } from "@/components/chat/prompt-editor-modal";
 import type { UserType } from "@/app/(auth)/auth";
 import {
   Sidebar,
@@ -53,7 +50,6 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
-  const [showPromptEditor, setShowPromptEditor] = useState(false);
 
   const handleDeleteAll = () => {
     setShowDeleteAllDialog(false);
@@ -137,26 +133,13 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
 
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    onClick={() => {
-                      setOpenMobile(false);
-                      setShowPromptEditor(true);
-                    }}
-                    tooltip="Customize Prompt"
-                  >
-                    <SlidersHorizontalIcon className="size-4" />
-                    <span className="text-[13px]">Prompt</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
                     asChild
                     className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    tooltip="Plans"
+                    tooltip="Library"
                   >
-                    <Link href="/plans" onClick={() => setOpenMobile(false)}>
-                      <CreditCardIcon className="size-4" />
-                      <span className="text-[13px]">Plans</span>
+                    <Link href="/library" onClick={() => setOpenMobile(false)}>
+                      <BookOpenIcon className="size-4" />
+                      <span className="text-[13px]">Library</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -209,10 +192,6 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
         </AlertDialogContent>
       </AlertDialog>
 
-      <PromptEditorModal 
-        open={showPromptEditor} 
-        onOpenChange={setShowPromptEditor} 
-      />
     </>
   );
 }

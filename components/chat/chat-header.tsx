@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftIcon, UsersIcon } from "lucide-react";
+import { LockIcon, PanelLeftIcon, ShieldAlertIcon, UsersIcon } from "lucide-react";
 import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,10 +12,12 @@ function PureChatHeader({
   chatId,
   selectedVisibilityType,
   isReadonly,
+  isEncrypted,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
+  isEncrypted?: boolean;
 }) {
   const { state, toggleSidebar, isMobile } = useSidebar();
   const [groupModalOpen, setGroupModalOpen] = useState(false);
@@ -43,6 +45,48 @@ function PureChatHeader({
           chatId={chatId}
           selectedVisibilityType={selectedVisibilityType}
         />
+      )}
+
+      {/* Encryption badge */}
+      {isEncrypted !== undefined && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium select-none ${
+                isEncrypted
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              }`}
+            >
+              {isEncrypted ? (
+                <>
+                  {/* Cutout lock icon */}
+                  <svg
+                    className="size-3 shrink-0"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="7" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                    <path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                    <circle cx="8" cy="11" r="1" fill="currentColor"/>
+                  </svg>
+                  Encrypted
+                </>
+              ) : (
+                <>
+                  <ShieldAlertIcon className="size-3 shrink-0" />
+                  Unencrypted
+                </>
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {isEncrypted
+              ? "This chat is stored only in your browser. Encrypted."
+              : "This chat is stored on our servers. Not encrypted."}
+          </TooltipContent>
+        </Tooltip>
       )}
 
       <div className="ml-auto flex items-center gap-2">
@@ -79,6 +123,7 @@ export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
   return (
     prevProps.chatId === nextProps.chatId &&
     prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
-    prevProps.isReadonly === nextProps.isReadonly
+    prevProps.isReadonly === nextProps.isReadonly &&
+    prevProps.isEncrypted === nextProps.isEncrypted
   );
 });
