@@ -586,19 +586,20 @@ function PureMultimodalInput({
             />
           </PromptInputTools>
 
-          <EmojiPickerButton
-            onEmojiSelect={(emoji) => {
-              setInput((prev) => prev + emoji);
-              textareaRef.current?.focus();
-            }}
-            open={emojiOpen}
-            onOpenChange={setEmojiOpen}
-          />
+          <div className="flex items-center gap-1">
+            <EmojiPickerButton
+              onEmojiSelect={(emoji) => {
+                setInput((prev) => prev + emoji);
+                textareaRef.current?.focus();
+              }}
+              open={emojiOpen}
+              onOpenChange={setEmojiOpen}
+            />
 
-          {status === "submitted" || status === "streaming" ? (
-            <StopButton setMessages={setMessages} stop={stop} />
-          ) : (
-            <PromptInputSubmit
+            {status === "submitted" || status === "streaming" ? (
+              <StopButton setMessages={setMessages} stop={stop} />
+            ) : (
+              <PromptInputSubmit
               className={cn(
                 "h-7 w-7 rounded-xl transition-all duration-200",
                 input.trim() && !isModelNotReady
@@ -612,7 +613,8 @@ function PureMultimodalInput({
             >
               <ArrowUpIcon className="size-4" />
             </PromptInputSubmit>
-          )}
+            )}
+          </div>
         </PromptInputFooter>
       </PromptInput>
     </div>

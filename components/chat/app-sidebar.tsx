@@ -179,15 +179,18 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
                     {channels.map((ch) => (
                       <SidebarMenuItem key={ch.id}>
                         <SidebarMenuButton
+                          asChild
                           className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                           tooltip={ch.name}
                         >
-                          {ch.type === "channel" ? (
-                            <HashIcon className="size-4" />
-                          ) : (
-                            <UsersIcon className="size-4" />
-                          )}
-                          <span className="text-[13px] truncate">{ch.name}</span>
+                          <Link href={`/channel/${ch.id}`} onClick={() => setOpenMobile(false)}>
+                            {ch.type === "channel" ? (
+                              <HashIcon className="size-4" />
+                            ) : (
+                              <UsersIcon className="size-4" />
+                            )}
+                            <span className="text-[13px] truncate">{ch.name}</span>
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}
