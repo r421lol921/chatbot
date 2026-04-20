@@ -871,38 +871,40 @@ function PureModelSelectorCompact({
                     <span className="text-[11px] text-muted-foreground">
                       {model.description}
                     </span>
+                    {/* Inline download / status — same visual weight as description */}
+                    {model.id === "lio-1" && (
+                      isWebLLMLoading ? (
+                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground select-none">
+                          <svg
+                            className="size-3 animate-spin shrink-0"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                          >
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round" />
+                          </svg>
+                          {Math.round(webllm.progress * 100)}%
+                        </span>
+                      ) : isOnDevice ? (
+                        <span className="text-[11px] text-muted-foreground select-none">
+                          On device
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-[11px] text-foreground underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground transition-colors cursor-pointer bg-transparent border-0 p-0 m-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            webllm.loadModel();
+                          }}
+                        >
+                          Download
+                        </button>
+                      )
+                    )}
                   </div>
                 </DropdownMenuItem>
-
-                {/* Download button for Lio 1.0 with loading animation */}
-                {isSelected && model.id === "lio-1" && (
-                  <div className="mx-1 mb-1 px-2.5 py-1.5">
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-2.5 py-2 text-left hover:bg-muted/60 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setShowInstallModal(true);
-                      }}
-                    >
-                      {isWebLLMLoading ? (
-                        <Loader2 className="size-3 animate-spin text-muted-foreground shrink-0" />
-                      ) : (
-                        <Cpu className="size-3 text-muted-foreground shrink-0" />
-                      )}
-                      <span className="text-[12px] font-medium text-foreground">
-                        {isWebLLMLoading
-                          ? `Downloading… ${Math.round(webllm.progress * 100)}%`
-                          : isOnDevice
-                          ? "On device — active"
-                          : "Download"}
-                      </span>
-                      {isOnDevice && !isWebLLMLoading && (
-                        <div className="ml-auto size-1.5 rounded-full bg-foreground shrink-0" />
-                      )}
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })}
