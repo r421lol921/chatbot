@@ -31,6 +31,8 @@ export type ChannelMessage = {
   text: string;
   createdAt: string;
   views: number;
+  liked?: boolean;
+  likes?: number;
 };
 
 const CHANNELS_STORAGE_KEY = "peytotoria_channels";

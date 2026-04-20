@@ -205,6 +205,25 @@ export function ChannelView({
 
   const isChannel = channel.type === "channel";
 
+  const toggleLike = useCallback((msgId: string) => {
+    setChannel((prev) => {
+      const msgs = prev.messages.map((m) => {
+        if (m.id !== msgId) return m;
+        const nowLiked = !m.liked;
+        return {
+          ...m,
+          liked: nowLiked,
+          likes: (m.likes ?? 0) + (nowLiked ? 1 : -1),
+        };
+      });
+      const updated = { ...prev, messages: msgs };
+      const all = loadChannels();
+      const idx = all.findIndex((c) => c.id === prev.id);
+      if (idx !== -1) { all[idx] = updated; saveChannels(all); }
+      return updated;
+    });
+  }, []);
+
   const handleShare = async (text: string) => {
     if (navigator.share) {
       try { await navigator.share({ text }); } catch { /* cancelled */ }
@@ -375,12 +394,17 @@ export function ChannelView({
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-muted hover:text-rose-500"
+                                  className={cn(
+                                    "flex h-6 items-center justify-center gap-0.5 rounded-md px-1 text-[10px] transition-colors hover:bg-muted",
+                                    msg.liked ? "text-rose-500" : "text-muted-foreground/50 hover:text-rose-500"
+                                  )}
+                                  onClick={() => toggleLike(msg.id)}
                                 >
-                                  <HeartIcon className="size-3.5" />
+                                  <HeartIcon className={cn("size-3.5", msg.liked && "fill-rose-500")} />
+                                  {(msg.likes ?? 0) > 0 && <span>{msg.likes}</span>}
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent>Like</TooltipContent>
+                              <TooltipContent>{msg.liked ? "Unlike" : "Like"}</TooltipContent>
                             </Tooltip>
                           </div>
                           {/* View count */}
@@ -433,12 +457,17 @@ export function ChannelView({
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground/50 transition-colors hover:bg-muted hover:text-rose-500"
+                                className={cn(
+                                  "flex h-6 items-center justify-center gap-0.5 rounded-md px-1 text-[10px] transition-colors hover:bg-muted",
+                                  msg.liked ? "text-rose-500" : "text-muted-foreground/50 hover:text-rose-500"
+                                )}
+                                onClick={() => toggleLike(msg.id)}
                               >
-                                <HeartIcon className="size-3.5" />
+                                <HeartIcon className={cn("size-3.5", msg.liked && "fill-rose-500")} />
+                                {(msg.likes ?? 0) > 0 && <span>{msg.likes}</span>}
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>Like</TooltipContent>
+                            <TooltipContent>{msg.liked ? "Unlike" : "Like"}</TooltipContent>
                           </Tooltip>
                         </div>
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground/40">

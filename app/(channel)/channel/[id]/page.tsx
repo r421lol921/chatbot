@@ -17,7 +17,7 @@ export default function ChannelPage() {
 
   if (channel === undefined) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+      <div className="flex h-dvh items-center justify-center text-muted-foreground text-sm">
         Loading...
       </div>
     );
@@ -25,7 +25,7 @@ export default function ChannelPage() {
 
   if (channel === null) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+      <div className="flex h-dvh items-center justify-center text-muted-foreground text-sm">
         Channel not found.
       </div>
     );
