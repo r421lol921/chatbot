@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/chat/app-sidebar";
@@ -6,22 +5,19 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { WebLLMProvider } from "@/hooks/use-webllm";
 import { auth } from "@/app/(auth)/auth";
 
-async function ChannelSidebar() {
-  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
-  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
+// Mark this route group as always dynamic so Next.js
+// knows upfront that cookies()/auth() will be used — this
+// satisfies the "uncached data outside Suspense" requirement.
+export const dynamic = "force-dynamic";
 
-  return (
-    <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user as any} userType={session?.user?.type} />
-    </SidebarProvider>
-  );
-}
-
-export default function ChannelLayout({
+export default async function ChannelLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
+
   return (
     <WebLLMProvider>
       <Toaster
@@ -32,25 +28,10 @@ export default function ChannelLayout({
             "!bg-card !text-foreground !border-border/50 !shadow-[var(--shadow-float)]",
         }}
       />
-      <Suspense fallback={null}>
-        <ChannelSidebarWrapper>{children}</ChannelSidebarWrapper>
-      </Suspense>
+      <SidebarProvider defaultOpen={!isCollapsed}>
+        <AppSidebar user={session?.user as any} userType={session?.user?.type} />
+        <SidebarInset>{children}</SidebarInset>
+      </SidebarProvider>
     </WebLLMProvider>
-  );
-}
-
-async function ChannelSidebarWrapper({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [session, cookieStore] = await Promise.all([auth(), cookies()]);
-  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
-
-  return (
-    <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user as any} userType={session?.user?.type} />
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
   );
 }
