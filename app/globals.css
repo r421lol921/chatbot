@@ -369,6 +369,14 @@ textarea:focus-visible {
   }
 }
 
+/* Dark mode: tint the chat background pattern */
+.dark .chat-bg-pattern {
+  filter: invert(1) brightness(0.15) contrast(1.2);
+}
+.chat-bg-pattern {
+  opacity: 0.55;
+}
+
 /* Odometer / slot-flip animation for Read / Delivered receipt */
 @keyframes slide-down {
   from {

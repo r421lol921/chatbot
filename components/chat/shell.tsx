@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveChat } from "@/hooks/use-active-chat";
 import { useEncryptedChats } from "@/hooks/use-encrypted-chats";
 import { useWebLLM } from "@/hooks/use-webllm";
+import type { ReplyContext } from "./messages";
 import {
   initialArtifactData,
   useArtifact,
@@ -42,6 +43,9 @@ export function ChatShell() {
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
     null
   );
+  const [replyTo, setReplyTo] = useState<ReplyContext>(null);
+  // Map from user messageId → the AI message they replied to
+  const [replyContextMap] = useState<Map<string, ReplyContext>>(new Map());
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
@@ -187,6 +191,7 @@ export function ChatShell() {
             chatId={chatId}
             isEncrypted={isEncrypted}
             isReadonly={isReadonly}
+            selectedModelId={currentModelId}
             selectedVisibilityType={visibilityType}
           />
 
@@ -206,6 +211,15 @@ export function ChatShell() {
                 setInput(text ?? "");
                 setEditingMessage(msg);
               }}
+              onReplyMessage={(msg) => {
+                const text = msg.parts
+                  ?.filter((p) => p.type === "text")
+                  .map((p) => (p as { text: string }).text)
+                  .join("")
+                  .slice(0, 120);
+                setReplyTo({ role: msg.role, text: text ?? "" });
+              }}
+              replyContextMap={replyContextMap}
               regenerate={regenerate}
               selectedModelId={currentModelId}
               setMessages={setMessages}
@@ -231,6 +245,8 @@ export function ChatShell() {
                   onModelChange={setCurrentModelId}
                   selectedModelId={currentModelId}
                   selectedVisibilityType={visibilityType}
+                  replyTo={replyTo}
+                  onClearReply={() => setReplyTo(null)}
                   sendMessage={
                     editingMessage
                       ? async () => {

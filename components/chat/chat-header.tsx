@@ -7,20 +7,35 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useSidebar } from "@/components/ui/sidebar";
 import { GroupChatModal } from "./group-chat-modal";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
+import { useWebLLM } from "@/hooks/use-webllm";
+import { chatModels } from "@/lib/ai/models";
 
 function PureChatHeader({
   chatId,
   selectedVisibilityType,
   isReadonly,
   isEncrypted,
+  selectedModelId,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
   isEncrypted?: boolean;
+  selectedModelId?: string;
 }) {
   const { state, toggleSidebar, isMobile } = useSidebar();
   const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const webllm = useWebLLM();
+
+  const selectedModel = chatModels.find((m) => m.id === (selectedModelId ?? "lio-1"));
+  const isWebLLMModel = !!selectedModel?.webllmModelId;
+  // Online = model ready/generating or not a webllm-only model (cloud is always "online")
+  const isOnline = !isWebLLMModel || webllm.status === "ready" || webllm.status === "generating";
+  const tooltipText = isWebLLMModel
+    ? (webllm.status === "ready" || webllm.status === "generating"
+        ? "AI Downloaded"
+        : "AI Not Downloaded")
+    : "AI Downloaded";
 
   if (state === "collapsed" && !isMobile) {
     return null;
@@ -89,6 +104,22 @@ function PureChatHeader({
         </Tooltip>
       )}
 
+      {/* Online / Offline badge */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={`flex items-center rounded-lg border px-2 py-1 text-[11px] font-medium select-none cursor-default ${
+              isOnline
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "border-border/40 bg-muted/50 text-muted-foreground"
+            }`}
+          >
+            {isOnline ? "Online" : "Offline"}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{tooltipText}</TooltipContent>
+      </Tooltip>
+
       <div className="ml-auto flex items-center gap-2">
         {!isReadonly && (
           <Tooltip>
@@ -124,6 +155,7 @@ export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
     prevProps.chatId === nextProps.chatId &&
     prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
     prevProps.isReadonly === nextProps.isReadonly &&
-    prevProps.isEncrypted === nextProps.isEncrypted
+    prevProps.isEncrypted === nextProps.isEncrypted &&
+    prevProps.selectedModelId === nextProps.selectedModelId
   );
 });
