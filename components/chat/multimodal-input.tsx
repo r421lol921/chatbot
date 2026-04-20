@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
-import { chatModels, PEYTO_PLUS_INFO } from "@/lib/ai/models";
+import { chatModels } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { useWebLLM } from "@/hooks/use-webllm";
 import { cn } from "@/lib/utils";
@@ -764,7 +764,7 @@ function PureModelSelectorCompact({
 }) {
   const selectedModel =
     chatModels.find((m) => m.id === selectedModelId) ?? chatModels[0];
-  const [showPlusModal, setShowPlusModal] = useState(false);
+
   const [showInstallModal, setShowInstallModal] = useState(false);
   const webllm = useWebLLM();
 
@@ -847,7 +847,7 @@ function PureModelSelectorCompact({
                   onSelect={(e) => {
                     if (model.locked) {
                       e.preventDefault();
-                      setShowPlusModal(true);
+    
                     } else {
                       if (model.id !== selectedModelId && webllm.isActive) {
                         webllm.setActive(false);
@@ -909,25 +909,6 @@ function PureModelSelectorCompact({
             );
           })}
 
-          {/* PeytO Plus upsell */}
-          <div className="border-t border-border/50 mt-1 pt-1">
-            <DropdownMenuItem
-              className="flex flex-col items-start gap-1 py-2 cursor-pointer"
-              onSelect={() => setShowPlusModal(true)}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="text-[12px] font-semibold plus-badge">
-                  Get PeytO Plus
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {PEYTO_PLUS_INFO.price} one-time
-                </span>
-              </div>
-              <span className="text-[10px] text-muted-foreground">
-                Unlock premium features
-              </span>
-            </DropdownMenuItem>
-          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -943,59 +924,7 @@ function PureModelSelectorCompact({
         }}
       />
 
-      {/* PeytO Plus Modal */}
-      {showPlusModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={() => setShowPlusModal(false)}
-        >
-          <div
-            className="bg-card border border-border/60 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center mb-4">
-              <h3 className="text-lg font-bold plus-badge">
-                {PEYTO_PLUS_INFO.name}
-              </h3>
-              <p className="text-2xl font-bold mt-2">{PEYTO_PLUS_INFO.price}</p>
-              <p className="text-sm text-muted-foreground">One-time payment</p>
-            </div>
 
-            <ul className="space-y-2 mb-6">
-              {PEYTO_PLUS_INFO.benefits.map((benefit, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="text-green-500 mt-0.5">&#10003;</span>
-                  <span>{benefit}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="bg-muted/50 rounded-lg p-4 mb-4">
-              <p className="text-sm text-center mb-2">
-                Send <span className="font-bold">{PEYTO_PLUS_INFO.price}</span> to:
-              </p>
-              <p className="text-center font-mono text-lg font-bold plus-badge">
-                {PEYTO_PLUS_INFO.cashAppTag}
-              </p>
-              <p className="text-xs text-center text-muted-foreground mt-1">
-                on {PEYTO_PLUS_INFO.paymentMethod}
-              </p>
-            </div>
-
-            <p className="text-xs text-center text-muted-foreground mb-4">
-              After payment, contact support with your CashApp receipt to activate
-              your Plus membership.
-            </p>
-
-            <button
-              className="w-full py-2 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
-              onClick={() => setShowPlusModal(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
