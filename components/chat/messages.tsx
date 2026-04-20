@@ -72,9 +72,10 @@ function PureMessages({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-0 chat-bg-pattern"
           style={{
-            backgroundImage: "url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/vilkasss-pattern-10102410-ZriUf9ZEzMxRd04Y0W3WJAxprkKhWg.jpg')",
-            backgroundSize: "380px 380px",
-            backgroundRepeat: "repeat",
+            backgroundImage: "url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/d-koi-GU_nNLVna_4-unsplash-PH5atxqLh9ekkgrcqcwwMudKplUJU0.jpg')",
+            backgroundSize: "cover",
+            backgroundRepeat: "no-repeat",
+            backgroundAttachment: "fixed",
           }}
         />
       )}
