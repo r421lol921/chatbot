@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HashIcon, UsersIcon, XIcon } from "lucide-react";
+import { HashIcon, ImageIcon, UsersIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ChannelType = "group" | "channel";
@@ -23,6 +23,8 @@ export type Channel = {
   members: string[];
   createdAt: string;
   messages: ChannelMessage[];
+  /** Base64 data URL of the uploaded icon/gif */
+  icon?: string;
 };
 
 export type ChannelMessage = {
@@ -55,15 +57,39 @@ export function PureCreateChannelModal({
   isOpen,
   onOpenChange,
   onCreated,
+  editingChannel,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (channel: Channel) => void;
+  /** When set, the modal is in edit mode for this channel */
+  editingChannel?: Channel | null;
 }) {
-  const [channelType, setChannelType] = useState<ChannelType>("group");
-  const [channelName, setChannelName] = useState("");
-  const [emails, setEmails] = useState<string[]>([]);
+  const [channelType, setChannelType] = useState<ChannelType>(editingChannel?.type ?? "group");
+  const [channelName, setChannelName] = useState(editingChannel?.name ?? "");
+  const [emails, setEmails] = useState<string[]>(editingChannel?.members ?? []);
   const [emailInput, setEmailInput] = useState("");
+  const [iconDataUrl, setIconDataUrl] = useState<string | undefined>(editingChannel?.icon);
+  const iconInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync state when editingChannel changes
+  const prevEditing = useRef<string | undefined>(undefined);
+  if (editingChannel?.id !== prevEditing.current) {
+    prevEditing.current = editingChannel?.id;
+    // Only update on actual change to avoid infinite renders
+  }
+
+  const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Icon must be under 2MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setIconDataUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const handleAddEmail = () => {
     const trimmed = emailInput.trim();
@@ -80,29 +106,51 @@ export function PureCreateChannelModal({
   };
 
   const handleCreate = () => {
-    if (!channelName.trim()) {
+    const trimmedName = channelName.trim();
+    if (!trimmedName) {
       toast.error("Enter a name for your " + (channelType === "group" ? "group" : "channel"));
       return;
     }
 
-    const newChannel: Channel = {
-      id: crypto.randomUUID(),
-      name: channelName.trim(),
-      type: channelType,
-      members: emails,
-      createdAt: new Date().toISOString(),
-      messages: [],
-    };
-
     const existing = loadChannels();
-    saveChannels([newChannel, ...existing]);
 
-    toast.success(`${channelType === "group" ? "Group chat" : "Channel"} "${newChannel.name}" created!`);
-    onCreated?.(newChannel);
+    // Unique name check (exclude self when editing)
+    const duplicate = existing.find(
+      (c) => c.name.toLowerCase() === trimmedName.toLowerCase() && c.id !== editingChannel?.id
+    );
+    if (duplicate) {
+      toast.error(`A ${duplicate.type === "group" ? "group chat" : "channel"} named "${trimmedName}" already exists`);
+      return;
+    }
+
+    if (editingChannel) {
+      // Edit mode — update in place
+      const updated: Channel = { ...editingChannel, name: trimmedName, type: channelType, members: emails, icon: iconDataUrl };
+      const idx = existing.findIndex((c) => c.id === editingChannel.id);
+      if (idx !== -1) existing[idx] = updated;
+      saveChannels(existing);
+      toast.success("Updated!");
+      onCreated?.(updated);
+    } else {
+      const newChannel: Channel = {
+        id: crypto.randomUUID(),
+        name: trimmedName,
+        type: channelType,
+        members: emails,
+        createdAt: new Date().toISOString(),
+        messages: [],
+        icon: iconDataUrl,
+      };
+      saveChannels([newChannel, ...existing]);
+      toast.success(`${channelType === "group" ? "Group chat" : "Channel"} "${newChannel.name}" created!`);
+      onCreated?.(newChannel);
+    }
+
     onOpenChange(false);
     setChannelName("");
     setEmails([]);
     setEmailInput("");
+    setIconDataUrl(undefined);
     setChannelType("group");
   };
 
@@ -116,12 +164,50 @@ export function PureCreateChannelModal({
             ) : (
               <UsersIcon className="size-4" />
             )}
-            Create
+            {editingChannel ? "Edit" : "Create"}
           </DialogTitle>
           <DialogDescription>
-            Create a new group chat or channel. Optionally invite members by email.
+            {editingChannel
+              ? "Update the name, icon, or members of your group or channel."
+              : "Create a new group chat or channel. Optionally invite members by email."}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Icon upload */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => iconInputRef.current?.click()}
+            className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border/60 bg-muted/40 transition-colors hover:border-border hover:bg-muted"
+            title="Upload icon or GIF"
+          >
+            {iconDataUrl ? (
+              <img src={iconDataUrl} alt="icon preview" className="size-full object-cover" />
+            ) : (
+              <ImageIcon className="size-5 text-muted-foreground/50" />
+            )}
+          </button>
+          <input
+            ref={iconInputRef}
+            type="file"
+            accept="image/*,.gif"
+            className="hidden"
+            onChange={handleIconChange}
+          />
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[13px] font-medium">Icon</p>
+            <p className="text-[11px] text-muted-foreground">Upload an image or GIF (max 2MB)</p>
+            {iconDataUrl && (
+              <button
+                type="button"
+                className="mt-0.5 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                onClick={() => setIconDataUrl(undefined)}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Type Selector */}
         <div className="flex gap-2">
@@ -208,7 +294,7 @@ export function PureCreateChannelModal({
           )}
 
           <Button onClick={handleCreate} disabled={!channelName.trim()} className="w-full" type="button">
-            Create {channelType === "group" ? "Group Chat" : "Channel"}
+            {editingChannel ? "Save Changes" : `Create ${channelType === "group" ? "Group Chat" : "Channel"}`}
           </Button>
         </div>
       </DialogContent>
