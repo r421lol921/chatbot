@@ -656,13 +656,24 @@ export const MultimodalInput = memo(
   }
 );
 
-// Curated set of fun, expressive emojis for the picker
-const EMOJI_LIST = [
-  "😀","😂","🥹","😍","🤩","😎","🥳","😏","😜","🤔",
-  "😭","😤","😱","🤯","🥺","😴","🤗","😇","😈","🤠",
-  "👍","👎","❤️","🔥","✨","🎉","👀","💯","🙏","💀",
-  "🫡","🫠","🤌","💅","🫶","🦋","🌈","💫","⚡","🎯",
+// Animated GIF sticker set
+const GIF_STICKERS: { src: string; alt: string; insert: string }[] = [
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/w_tunes.GIF-pHXpiJ3why5pH2NwQ1lzTkyutrw36V.gif", alt: "Kirby with headphones", insert: "[kirby]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/picsart220424212.PNG-xu0AXjWJSudSzTDCqOnSsGUu1nSCUR.png", alt: "Blue star", insert: "[star]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%3Acorazn%3A-115LCtC3BvXucsXfSJiBEpSQPoP8Pq.gif", alt: "Pink heart", insert: "[heart]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/whiteshake.GIF-zy1iXHtYXSF56Obw4hUM99sp6XdKHs.gif", alt: "White bunny", insert: "[bunny]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/3D_Angry_Spunchbop.GIF-2ZLLoLcdrjT5dfZlNgW6ufXWCUqCVR.gif", alt: "Angry Spongebob", insert: "[spunchbop]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/mine.PNG-tLO4enDEDSjNziY4LTHEePaWivo8Od.png", alt: "Minecraft grass block", insert: "[mine]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/spotify91.GIF-Jl3U0DdnDLTrN6XMxTGW6eBOduX7IW.gif", alt: "Spotify", insert: "[spotify]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/des_sleep.GIF-eo5RHzDSB6xVOVVPqXGd8du9IuZFol.gif", alt: "Sleeping Mario", insert: "[sleep]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/hmhm.GIF-0UAMcaxvPQFCLykwR4CxFnnxHhy9Bn.gif", alt: "Thinking", insert: "[think]" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/59463dhearts.GIF-md1YyX4oZnluJf9uGQjaTSj8S4uuvo.gif", alt: "Two hearts", insert: "[hearts]" },
 ];
+
+// Map insert codes → GIF src for rendering in messages
+export const GIF_STICKER_MAP: Record<string, string> = Object.fromEntries(
+  GIF_STICKERS.map((s) => [s.insert, s.src])
+);
 
 function EmojiPickerButton({
   onEmojiSelect,
@@ -678,7 +689,7 @@ function EmojiPickerButton({
       <PopoverTrigger asChild>
         <Button
           className="h-7 w-7 rounded-lg border border-border/40 p-1 text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-          title="Pick an emoji"
+          title="Pick a sticker"
           variant="ghost"
           type="button"
         >
@@ -688,21 +699,28 @@ function EmojiPickerButton({
       <PopoverContent
         align="end"
         side="top"
-        className="w-[252px] p-2"
+        className="w-[240px] p-2"
         sideOffset={8}
       >
-        <div className="grid grid-cols-8 gap-0.5">
-          {EMOJI_LIST.map((emoji) => (
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 px-1">Stickers</p>
+        <div className="grid grid-cols-5 gap-1">
+          {GIF_STICKERS.map((sticker) => (
             <button
-              key={emoji}
+              key={sticker.insert}
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors hover:bg-muted active:scale-90"
+              className="flex h-10 w-10 items-center justify-center rounded-lg transition-all hover:bg-muted hover:scale-110 active:scale-95"
+              title={sticker.alt}
               onClick={() => {
-                onEmojiSelect(emoji);
+                onEmojiSelect(sticker.insert);
                 onOpenChange(false);
               }}
             >
-              {emoji}
+              <img
+                src={sticker.src}
+                alt={sticker.alt}
+                className="h-8 w-8 object-contain"
+                unselectable="on"
+              />
             </button>
           ))}
         </div>
