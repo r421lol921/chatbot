@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,18 +25,24 @@ export const login = async (
     });
 
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
       return { status: "failed" };
     }
+
+    redirect("/");
   } catch (error) {
+    // redirect() throws internally — must re-throw it
+    if (isRedirectError(error)) throw error;
     if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
   }
 
-  // redirect() must be called outside try/catch — it throws internally
-  redirect("/");
+  return { status: "success" };
 };
 
 export type RegisterActionState = {
@@ -60,13 +67,6 @@ export const register = async (
 
     const supabase = await createClient();
 
-    // First check if user already exists by attempting sign-in
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInError) {
-      // User exists and credentials match — just log them in
-      redirect("/");
-    }
-
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -78,22 +78,32 @@ export const register = async (
     });
 
     if (error) {
-      if (error.message?.toLowerCase().includes("already")) {
+      if (
+        error.message?.toLowerCase().includes("already") ||
+        error.message?.toLowerCase().includes("registered")
+      ) {
         return { status: "user_exists" };
       }
       return { status: "failed" };
     }
 
-    // If the user has a session immediately (email confirmation disabled), redirect now
+    // user already existed — identities array is empty
+    if (data.user && data.user.identities?.length === 0) {
+      return { status: "user_exists" };
+    }
+
+    // Email confirmation disabled — session is available immediately
     if (data.session) {
       redirect("/");
     }
 
-    // Otherwise email confirmation is required — show success message
+    // Email confirmation required
     return { status: "success" };
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     if (error instanceof z.ZodError) return { status: "invalid_data" };
-    // next/navigation redirect throws — re-throw it
-    throw error;
+    return { status: "failed" };
   }
+
+  return { status: "success" };
 };
