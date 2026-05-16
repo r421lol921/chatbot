@@ -17,6 +17,7 @@ import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { RateLimitBanner } from "./rate-limit-banner";
+import { WebLLMSuggestions } from "./webllm-suggestions";
 
 export function ChatShell() {
   const {
@@ -212,7 +213,14 @@ export function ChatShell() {
               <RateLimitBanner />
               <div className="mx-auto w-full max-w-4xl px-2 md:px-4">
               {!isReadonly && (
-                <MultimodalInput
+                <>
+                  <WebLLMSuggestions
+                    messages={messages}
+                    onSelect={(suggestion) => {
+                      setInput(suggestion);
+                    }}
+                  />
+                  <MultimodalInput
                   attachments={attachments}
                   chatId={chatId}
                   editingMessage={editingMessage}
@@ -247,6 +255,7 @@ export function ChatShell() {
                   status={effectiveStatus}
                   stop={useLocalChat ? localStop : stop}
                 />
+                </>
               )}
               </div>
             </div>

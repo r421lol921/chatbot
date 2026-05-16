@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, EyeIcon, XIcon } from "lucide-react";
 import {
   createContext,
   memo,
@@ -553,3 +553,98 @@ export type CodeBlockLanguageSelectorItemProps = ComponentProps<
 export const CodeBlockLanguageSelectorItem = (
   props: CodeBlockLanguageSelectorItemProps
 ) => <SelectItem {...props} />;
+
+// ─── Preview Button + Modal ────────────────────────────────────────────────
+
+const PREVIEWABLE_LANGS = new Set(["html", "css", "javascript", "js", "jsx", "tsx", "typescript", "ts", "svg"]);
+
+export const isPreviewable = (language: string) =>
+  PREVIEWABLE_LANGS.has(language.toLowerCase());
+
+/**
+ * Wraps code in a minimal HTML scaffold so CSS/JS fragments render correctly.
+ */
+const buildPreviewSrc = (code: string, language: string): string => {
+  const lang = language.toLowerCase();
+  if (lang === "html" || lang === "svg") return code;
+  if (lang === "css") {
+    return `<!DOCTYPE html><html><head><style>${code}</style></head><body></body></html>`;
+  }
+  // JS / TS / JSX / TSX
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body><script type="module">${code}<\/script></body></html>`;
+};
+
+export type CodeBlockPreviewButtonProps = ComponentProps<typeof Button> & {
+  code: string;
+  language: string;
+};
+
+export const CodeBlockPreviewButton = ({
+  code,
+  language,
+  className,
+  ...props
+}: CodeBlockPreviewButtonProps) => {
+  const [open, setOpen] = useState(false);
+
+  if (!isPreviewable(language)) return null;
+
+  const src = buildPreviewSrc(code, language);
+  const srcUrl = `data:text/html;charset=utf-8,${encodeURIComponent(src)}`;
+
+  return (
+    <>
+      <Button
+        className={cn("shrink-0", className)}
+        onClick={() => setOpen(true)}
+        size="icon"
+        title="Preview"
+        variant="ghost"
+        {...props}
+      >
+        <EyeIcon size={14} />
+      </Button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="relative flex flex-col w-full max-w-3xl h-[80vh] rounded-xl border border-border bg-background shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b bg-muted/60 px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <EyeIcon size={14} className="text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">
+                  Preview
+                </span>
+                <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  {language}
+                </span>
+              </div>
+              <Button
+                className="size-7"
+                onClick={() => setOpen(false)}
+                size="icon"
+                variant="ghost"
+              >
+                <XIcon size={14} />
+              </Button>
+            </div>
+
+            {/* iframe */}
+            <iframe
+              className="flex-1 w-full bg-white"
+              sandbox="allow-scripts"
+              src={srcUrl}
+              title="Code preview"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
