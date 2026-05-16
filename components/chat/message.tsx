@@ -3,7 +3,8 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
-import { MessageContent, MessageResponse } from "../ai-elements/message";
+import { MessageContent } from "../ai-elements/message";
+import { MarkdownRenderer } from "./markdown-renderer";
 import { Shimmer } from "../ai-elements/shimmer";
 import {
   Tool,
@@ -102,6 +103,12 @@ const PurePreviewMessage = ({
     const { type } = part;
     const key = `message-${message.id}-part-${index}`;
 
+    // Track how many tool calls have completed before this index for "Executed code N"
+    const executionIndex = message.parts
+      .slice(0, index)
+      .filter((p) => p.type.startsWith("tool-") && "state" in p && (p as { state: string }).state === "output-available")
+      .length + 1;
+
     if (type === "reasoning") {
       if (!mergedReasoning.rendered && mergedReasoning.text) {
         mergedReasoning.rendered = true;
@@ -126,7 +133,7 @@ const PurePreviewMessage = ({
           data-testid="message-content"
           key={key}
         >
-          <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
+          <MarkdownRenderer>{sanitizeText(part.text)}</MarkdownRenderer>
         </MessageContent>
       );
     }
@@ -153,7 +160,7 @@ const PurePreviewMessage = ({
         return (
           <div className={widthClass} key={toolCallId}>
             <Tool className="w-full" defaultOpen={true}>
-              <ToolHeader state="output-denied" type="tool-getWeather" />
+              <ToolHeader executionIndex={executionIndex} state="output-denied" type="tool-getWeather" />
               <ToolContent>
                 <div className="px-4 py-3 text-muted-foreground text-sm">
                   Weather lookup was denied.
@@ -168,7 +175,7 @@ const PurePreviewMessage = ({
         return (
           <div className={widthClass} key={toolCallId}>
             <Tool className="w-full" defaultOpen={true}>
-              <ToolHeader state={state} type="tool-getWeather" />
+              <ToolHeader executionIndex={executionIndex} state={state} type="tool-getWeather" />
               <ToolContent>
                 <ToolInput input={part.input} />
               </ToolContent>
@@ -180,7 +187,7 @@ const PurePreviewMessage = ({
       return (
         <div className={widthClass} key={toolCallId}>
           <Tool className="w-full" defaultOpen={true}>
-            <ToolHeader state={state} type="tool-getWeather" />
+            <ToolHeader executionIndex={executionIndex} state={state} type="tool-getWeather" />
             <ToolContent>
               {(state === "input-available" ||
                 state === "approval-requested") && (

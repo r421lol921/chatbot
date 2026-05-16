@@ -7,6 +7,7 @@ import { DataStreamProvider } from "@/components/chat/data-stream-provider";
 import { ChatShell } from "@/components/chat/shell";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ActiveChatProvider } from "@/hooks/use-active-chat";
+import { WebLLMProvider } from "@/hooks/use-webllm";
 import { auth } from "../(auth)/auth";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -16,11 +17,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
         strategy="lazyOnload"
       />
-      <DataStreamProvider>
-        <Suspense fallback={<div className="flex h-dvh bg-sidebar" />}>
-          <SidebarShell>{children}</SidebarShell>
-        </Suspense>
-      </DataStreamProvider>
+      <WebLLMProvider>
+        <DataStreamProvider>
+          <Suspense fallback={<div className="flex h-dvh bg-sidebar" />}>
+            <SidebarShell>{children}</SidebarShell>
+          </Suspense>
+        </DataStreamProvider>
+      </WebLLMProvider>
     </>
   );
 }

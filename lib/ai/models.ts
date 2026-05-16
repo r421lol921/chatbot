@@ -51,6 +51,14 @@ export async function getCapabilities(): Promise<
   };
 }
 
+/**
+ * Returns true for models that support a "Run on device" local inference mode.
+ * Currently only Lio 1.0 exposes this option.
+ */
+export function supportsLocalMode(modelId: string): boolean {
+  return modelId === "lio-1";
+}
+
 export const isDemo = process.env.IS_DEMO === "1";
 
 export function getActiveModels(): ChatModel[] {
