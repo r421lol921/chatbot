@@ -2,9 +2,9 @@
 
 import { ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
-import { signOut, useSession } from "next-auth/react";
+type User = { id?: string; email?: string | null; name?: string | null; image?: string | null };
 import { useTheme } from "next-themes";
+import { createClient } from "@/lib/supabase/client";
 import type { UserType } from "@/app/(auth)/auth";
 import {
   DropdownMenu,
@@ -19,8 +19,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { guestRegex } from "@/lib/constants";
-import { LoaderIcon } from "./icons";
-import { toast } from "./toast";
 
 function emailToHue(email: string): number {
   let hash = 0;
@@ -58,32 +56,19 @@ function UserTypeBadge({ userType, resolvedTheme }: { userType: UserType; resolv
   );
 }
 
-export function SidebarUserNav({ user }: { user: User }) {
+export function SidebarUserNav({ user, userType: userTypeProp }: { user: User; userType?: UserType }) {
   const router = useRouter();
-  const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
-  const userType: UserType = (data?.user as { type?: UserType })?.type ?? "regular";
+  const userType: UserType = userTypeProp ?? "regular";
 
-  const isGuest = guestRegex.test(data?.user?.email ?? "");
+  const isGuest = guestRegex.test(user?.email ?? "");
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            {status === "loading" ? (
-              <SidebarMenuButton className="h-10 justify-between rounded-lg bg-transparent text-sidebar-foreground/50 transition-colors duration-150 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                <div className="flex flex-row items-center gap-2">
-                  <div className="size-6 animate-pulse rounded-full bg-sidebar-foreground/10" />
-                  <span className="animate-pulse rounded-md bg-sidebar-foreground/10 text-transparent text-[13px]">
-                    Loading...
-                  </span>
-                </div>
-                <div className="animate-spin text-sidebar-foreground/50">
-                  <LoaderIcon />
-                </div>
-              </SidebarMenuButton>
-            ) : (
+            {(
               <SidebarMenuButton
                 className="h-8 px-2 rounded-lg bg-transparent text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 data-testid="user-nav-button"
@@ -122,23 +107,14 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
                 className="w-full cursor-pointer text-[13px]"
-                onClick={() => {
-                  if (status === "loading") {
-                    toast({
-                      type: "error",
-                      description:
-                        "Checking authentication status, please try again!",
-                    });
-
-                    return;
-                  }
-
+                onClick={async () => {
                   if (isGuest) {
                     router.push("/register");
                   } else {
-                    signOut({
-                      redirectTo: "/",
-                    });
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
+                    router.push("/login");
+                    router.refresh();
                   }
                 }}
                 type="button"

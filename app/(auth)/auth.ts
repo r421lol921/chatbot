@@ -1,113 +1,85 @@
-import { compare } from "bcrypt-ts";
-import NextAuth, { type DefaultSession } from "next-auth";
-import type { DefaultJWT } from "next-auth/jwt";
-import Credentials from "next-auth/providers/credentials";
-import { DUMMY_PASSWORD } from "@/lib/constants";
-import { createGuestUser, getUser, getUserById } from "@/lib/db/queries";
-import { authConfig } from "./auth.config";
+/**
+ * Supabase-backed auth shim.
+ *
+ * Exports the same surface as the old NextAuth module so every caller
+ * (route handlers, server actions, layouts) works without changes:
+ *
+ *   import { auth, signIn, signOut } from "@/app/(auth)/auth";
+ *   const session = await auth();
+ *   session?.user.id   // UUID string
+ *   session?.user.type // "guest" | "regular" | "plus"
+ */
+
+import { createClient } from "@/lib/supabase/server";
+import { getUserById } from "@/lib/db/queries";
+import { guestRegex } from "@/lib/constants";
 
 export type UserType = "guest" | "regular" | "plus";
 
-declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: {
-      id: string;
-      type: UserType;
-    } & DefaultSession["user"];
-  }
-
-  interface User {
-    id?: string;
-    email?: string | null;
-    type: UserType;
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT extends DefaultJWT {
+export interface AuthSession {
+  user: {
     id: string;
+    email: string | null;
     type: UserType;
-  }
+  };
 }
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth({
-  ...authConfig,
-  providers: [
-    Credentials({
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        const email = String(credentials.email ?? "");
-        const password = String(credentials.password ?? "");
-        const users = await getUser(email);
+/**
+ * Returns the current session (or null if unauthenticated).
+ * Drop-in replacement for NextAuth's `auth()`.
+ */
+export async function auth(): Promise<AuthSession | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-        if (users.length === 0) {
-          await compare(password, DUMMY_PASSWORD);
-          return null;
-        }
+  if (error || !user) return null;
 
-        const [user] = users;
+  // Determine user type: guest emails match the guestRegex pattern.
+  const isGuest = guestRegex.test(user.email ?? "") || user.is_anonymous === true;
 
-        if (!user.password) {
-          await compare(password, DUMMY_PASSWORD);
-          return null;
-        }
+  let userType: UserType = isGuest ? "guest" : "regular";
 
-        const passwordsMatch = await compare(password, user.password);
-
-        if (!passwordsMatch) {
-          return null;
-        }
-
-        const dbUserType = (user.userType as UserType) ?? "regular";
-        return { ...user, type: dbUserType };
-      },
-    }),
-    Credentials({
-      id: "guest",
-      credentials: {},
-      async authorize() {
-        const [guestUser] = await createGuestUser();
-        return { ...guestUser, type: "guest" };
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id as string;
-        token.type = user.type;
+  // For real (non-guest) users, read the latest userType from our DB so Plus
+  // upgrades take effect without requiring a new sign-in.
+  if (!isGuest) {
+    try {
+      const dbUser = await getUserById({ id: user.id });
+      if (dbUser?.userType) {
+        userType = dbUser.userType as UserType;
       }
+    } catch {
+      // Silently fall back to "regular"
+    }
+  }
 
-      // Re-read userType from DB on each token refresh so Plus changes
-      // granted by admin take effect without requiring a new login.
-      if (token.id && token.type !== "guest") {
-        try {
-          const freshUser = await getUserById({ id: token.id });
-          if (freshUser?.userType) {
-            token.type = freshUser.userType as UserType;
-          }
-        } catch {
-          // Silently fall back to existing token type
-        }
-      }
-
-      return token;
+  return {
+    user: {
+      id: user.id,
+      email: user.email ?? null,
+      type: userType,
     },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.type = token.type;
-      }
+  };
+}
 
-      return session;
-    },
-  },
-});
+/**
+ * Signs the current user out via Supabase.
+ * Pass `{ redirectTo }` to navigate after sign-out (handled client-side).
+ */
+export async function signOut(_opts?: { redirectTo?: string }) {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+}
+
+/**
+ * Thin wrapper kept for import-compatibility with old NextAuth callers.
+ * Actual sign-in logic lives in `app/(auth)/actions.ts`.
+ */
+export async function signIn(
+  _provider: string,
+  _credentials?: Record<string, unknown>
+) {
+  // No-op shim — real sign-in is handled by Supabase in actions.ts
+}

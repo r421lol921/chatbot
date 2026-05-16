@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "PeytOtoria",
@@ -78,11 +77,7 @@ export default function RootLayout({
           disableTransitionOnChange
           enableSystem
         >
-          <SessionProvider
-            basePath={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth`}
-          >
             <TooltipProvider>{children}</TooltipProvider>
-          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,10 +1,9 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
-
-import { createUser, getUser } from "@/lib/db/queries";
-
-import { signIn } from "./auth";
+import { createClient } from "@/lib/supabase/server";
 
 const authFormSchema = z.object({
   email: z.string().email(),
@@ -20,25 +19,30 @@ export const login = async (
   formData: FormData
 ): Promise<LoginActionState> => {
   try {
-    const validatedData = authFormSchema.parse({
+    const { email, password } = authFormSchema.parse({
       email: formData.get("email"),
       password: formData.get("password"),
     });
 
-    await signIn("credentials", {
-      email: validatedData.email,
-      password: validatedData.password,
-      redirect: false,
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    return { status: "success" };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { status: "invalid_data" };
+    if (error) {
+      return { status: "failed" };
     }
 
+    redirect("/");
+  } catch (error) {
+    // redirect() throws internally — must re-throw it
+    if (isRedirectError(error)) throw error;
+    if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
   }
+
+  return { status: "success" };
 };
 
 export type RegisterActionState = {
@@ -56,29 +60,50 @@ export const register = async (
   formData: FormData
 ): Promise<RegisterActionState> => {
   try {
-    const validatedData = authFormSchema.parse({
+    const { email, password } = authFormSchema.parse({
       email: formData.get("email"),
       password: formData.get("password"),
     });
 
-    const [user] = await getUser(validatedData.email);
+    const supabase = await createClient();
 
-    if (user) {
-      return { status: "user_exists" } as RegisterActionState;
-    }
-    await createUser(validatedData.email, validatedData.password);
-    await signIn("credentials", {
-      email: validatedData.email,
-      password: validatedData.password,
-      redirect: false,
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo:
+          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback`,
+      },
     });
 
-    return { status: "success" };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { status: "invalid_data" };
+    if (error) {
+      if (
+        error.message?.toLowerCase().includes("already") ||
+        error.message?.toLowerCase().includes("registered")
+      ) {
+        return { status: "user_exists" };
+      }
+      return { status: "failed" };
     }
 
+    // user already existed — identities array is empty
+    if (data.user && data.user.identities?.length === 0) {
+      return { status: "user_exists" };
+    }
+
+    // Email confirmation disabled — session is available immediately
+    if (data.session) {
+      redirect("/");
+    }
+
+    // Email confirmation required
+    return { status: "success" };
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
   }
+
+  return { status: "success" };
 };
