@@ -9,10 +9,12 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
-  // Let Supabase auth API and our callback route through without a session check.
+  // Let auth API routes, the callback route, login, and register through without a session check.
   if (
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/auth/callback")
+    pathname.startsWith("/auth/callback") ||
+    pathname === "/login" ||
+    pathname === "/register"
   ) {
     return NextResponse.next();
   }
@@ -23,15 +25,8 @@ export async function proxy(request: NextRequest) {
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
   if (!user) {
-    // Redirect unauthenticated visitors to the guest sign-in route so they
-    // get an anonymous Supabase session before landing on the chat page.
-    const redirectUrl = encodeURIComponent(new URL(request.url).pathname);
-    return NextResponse.redirect(
-      new URL(
-        `${base}/api/auth/guest?redirectUrl=${redirectUrl}`,
-        request.url
-      )
-    );
+    // No session — redirect to login page.
+    return NextResponse.redirect(new URL(`${base}/login`, request.url));
   }
 
   const isGuest = guestRegex.test(user.email ?? "");
