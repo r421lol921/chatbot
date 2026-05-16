@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { randomUUID } from "crypto";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,11 +23,32 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
   }
 
-  // Create an anonymous (guest) Supabase session.
-  const { error } = await supabase.auth.signInAnonymously();
+  // Try anonymous sign-in first (requires enabling in Supabase dashboard).
+  const { error: anonError } = await supabase.auth.signInAnonymously();
 
-  if (error) {
-    // Fall back to login page if anonymous auth fails.
+  if (!anonError) {
+    return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
+  }
+
+  // Fallback: create a guest user with a generated email and password.
+  // This works even if anonymous auth is disabled.
+  const guestId = randomUUID();
+  const guestEmail = `guest-${guestId}@guest.lio.chat`;
+  const guestPassword = randomUUID(); // Random password (user won't need it)
+
+  const { error: signUpError } = await supabase.auth.signUp({
+    email: guestEmail,
+    password: guestPassword,
+    options: {
+      data: {
+        is_guest: true,
+      },
+    },
+  });
+
+  if (signUpError) {
+    // If even this fails, redirect to login.
+    console.error("[v0] Guest signup failed:", signUpError.message);
     return NextResponse.redirect(new URL(`${base}/login`, request.url));
   }
 
