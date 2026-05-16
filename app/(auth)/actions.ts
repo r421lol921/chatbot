@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,12 +29,13 @@ export const login = async (
     if (error) {
       return { status: "failed" };
     }
-
-    return { status: "success" };
   } catch (error) {
     if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
   }
+
+  // redirect() must be called outside try/catch — it throws internally
+  redirect("/");
 };
 
 export type RegisterActionState = {
@@ -58,27 +60,40 @@ export const register = async (
 
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signUp({
+    // First check if user already exists by attempting sign-in
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (!signInError) {
+      // User exists and credentials match — just log them in
+      redirect("/");
+    }
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo:
           process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/auth/callback`,
+          `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback`,
       },
     });
 
     if (error) {
-      // Supabase returns "User already registered" for duplicate emails
       if (error.message?.toLowerCase().includes("already")) {
         return { status: "user_exists" };
       }
       return { status: "failed" };
     }
 
+    // If the user has a session immediately (email confirmation disabled), redirect now
+    if (data.session) {
+      redirect("/");
+    }
+
+    // Otherwise email confirmation is required — show success message
     return { status: "success" };
   } catch (error) {
     if (error instanceof z.ZodError) return { status: "invalid_data" };
-    return { status: "failed" };
+    // next/navigation redirect throws — re-throw it
+    throw error;
   }
 };
