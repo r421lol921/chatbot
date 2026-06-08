@@ -186,6 +186,20 @@ export const chatMember = pgTable("ChatMember", {
 
 export type ChatMember = InferSelectModel<typeof chatMember>;
 
+export const game = pgTable("Game", {
+  id: varchar("id", { length: 12 }).primaryKey().notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  html: text("html").notNull(),
+  userId: uuid("userId").references(() => user.id),
+  chatId: uuid("chatId").references(() => chat.id),
+  shareToken: varchar("shareToken", { length: 32 }).notNull().unique(),
+  plays: integer("plays").notNull().default(0),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type Game = InferSelectModel<typeof game>;
+
 export const userIntegration = pgTable("UserIntegration", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   userId: uuid("userId")
