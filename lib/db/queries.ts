@@ -23,6 +23,7 @@ import {
   chat,
   chatMember,
   chatShare,
+  chatView,
   type DBMessage,
   document,
   message,
@@ -41,10 +42,19 @@ const connectionString =
   process.env.DATABASE_URL ??
   "";
 
-// Supabase pooled URLs already include sslmode in the query string,
-// so we only add ssl:"require" for plain connection strings.
+// Supabase pooled (PgBouncer) URLs include ?pgbouncer=true and sslmode in
+// the query string. Prepared statements must be disabled for the pooler.
+const isPooled =
+  connectionString.includes("pgbouncer=true") ||
+  connectionString.includes("6543"); // Supabase pooler port
+
 const hasSslParam = connectionString.includes("sslmode=");
-const sqlClient = postgres(connectionString, hasSslParam ? {} : { ssl: "require" });
+
+const sqlClient = postgres(connectionString, {
+  ...(hasSslParam ? {} : { ssl: "require" }),
+  ...(isPooled ? { prepare: false } : {}),
+  max: 10,
+});
 export const db = drizzle(sqlClient);
 
 export async function getUser(email: string): Promise<User[]> {
@@ -758,5 +768,171 @@ export async function getChatMembers({ chatId }: { chatId: string }) {
       "bad_request:database",
       "Failed to get chat members"
     );
+  }
+}
+
+export async function setUserType({
+  userId,
+  userType,
+}: {
+  userId: string;
+  userType: "regular" | "plus" | "guest";
+}) {
+  try {
+    return await db
+      .update(user)
+      .set({ userType })
+      .where(eq(user.id, userId))
+      .returning({ id: user.id, email: user.email, userType: user.userType });
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to set user type");
+  }
+}
+
+export async function getUserById({ id }: { id: string }) {
+  try {
+    const [found] = await db.select().from(user).where(eq(user.id, id));
+    return found ?? null;
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get user by id");
+  }
+}
+
+export async function getUserByEmail({ email }: { email: string }) {
+  try {
+    const [found] = await db.select().from(user).where(eq(user.email, email));
+    return found ?? null;
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get user by email");
+  }
+}
+
+export async function getPublicChats({ limit = 5 }: { limit?: number } = {}) {
+  try {
+    const publicChats = await db
+      .select({
+        id: chat.id,
+        title: chat.title,
+        createdAt: chat.createdAt,
+        userId: chat.userId,
+        viewCount: chat.viewCount,
+      })
+      .from(chat)
+      .where(eq(chat.visibility, "public"))
+      .orderBy(desc(chat.createdAt))
+      .limit(50);
+
+    // Pick random 5 from the pool
+    const shuffled = publicChats.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, limit);
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to get public chats");
+  }
+}
+
+export async function updateChatViewCount({
+  chatId,
+  viewCount,
+}: {
+  chatId: string;
+  viewCount: number;
+}) {
+  try {
+    await db
+      .update(chat)
+      .set({ viewCount })
+      .where(eq(chat.id, chatId));
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to update view count");
+  }
+}
+
+export async function getViewCountForChat({ chatId }: { chatId: string }): Promise<number> {
+  try {
+    const [result] = await db
+      .select({ count: count(chatView.id) })
+      .from(chatView)
+      .where(eq(chatView.chatId, chatId));
+    return result?.count ?? 0;
+  } catch (_error) {
+    return 0;
+  }
+}
+
+export async function getTotalPublicChatViews(): Promise<number> {
+  try {
+    const publicChatIds = await db
+      .select({ id: chat.id })
+      .from(chat)
+      .where(eq(chat.visibility, "public"));
+
+    if (publicChatIds.length === 0) return 0;
+
+    const ids = publicChatIds.map((c) => c.id);
+    const [result] = await db
+      .select({ count: count(chatView.id) })
+      .from(chatView)
+      .where(inArray(chatView.chatId, ids));
+    return result?.count ?? 0;
+  } catch (_error) {
+    return 0;
+  }
+}
+
+export async function recordChatView({
+  chatId,
+  visitorId,
+}: {
+  chatId: string;
+  visitorId?: string;
+}) {
+  try {
+    await db.insert(chatView).values({
+      chatId,
+      viewedAt: new Date(),
+      visitorId: visitorId ?? null,
+    });
+  } catch (_error) {
+    // Silent — view tracking should never break chat loading
+  }
+}
+
+export async function setViewCountForChat({
+  chatId,
+  count: targetCount,
+}: {
+  chatId: string;
+  count: number;
+}) {
+  try {
+    const current = await getViewCountForChat({ chatId });
+    const diff = targetCount - current;
+    if (diff > 0) {
+      // Add synthetic view rows to reach the target
+      const rows = Array.from({ length: diff }, () => ({
+        chatId,
+        viewedAt: new Date(),
+        visitorId: null as string | null,
+      }));
+      await db.insert(chatView).values(rows);
+    } else if (diff < 0) {
+      // Delete the most recent |diff| rows
+      const toDelete = await db
+        .select({ id: chatView.id })
+        .from(chatView)
+        .where(eq(chatView.chatId, chatId))
+        .orderBy(desc(chatView.viewedAt))
+        .limit(Math.abs(diff));
+      if (toDelete.length > 0) {
+        await db.delete(chatView).where(
+          inArray(
+            chatView.id,
+            toDelete.map((r) => r.id)
+          )
+        );
+      }
+    }
+  } catch (_error) {
+    throw new ChatbotError("bad_request:database", "Failed to set view count");
   }
 }

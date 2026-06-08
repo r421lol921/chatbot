@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
@@ -19,9 +20,12 @@ export const user = pgTable("User", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAnonymous: boolean("isAnonymous").notNull().default(false),
+  userType: varchar("userType", { length: 20 }).notNull().default("regular"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
+
+
 
 export type User = InferSelectModel<typeof user>;
 
@@ -35,9 +39,19 @@ export const chat = pgTable("Chat", {
   visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
+  viewCount: integer("viewCount").notNull().default(0),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
+
+export const chatView = pgTable("ChatView", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  chatId: uuid("chatId").notNull().references(() => chat.id, { onDelete: "cascade" }),
+  viewedAt: timestamp("viewedAt").notNull().defaultNow(),
+  visitorId: varchar("visitorId", { length: 64 }),
+});
+
+export type ChatView = InferSelectModel<typeof chatView>;
 
 export const message = pgTable("Message_v2", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -171,6 +185,20 @@ export const chatMember = pgTable("ChatMember", {
 });
 
 export type ChatMember = InferSelectModel<typeof chatMember>;
+
+export const game = pgTable("Game", {
+  id: varchar("id", { length: 12 }).primaryKey().notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  html: text("html").notNull(),
+  userId: uuid("userId").references(() => user.id),
+  chatId: uuid("chatId").references(() => chat.id),
+  shareToken: varchar("shareToken", { length: 32 }).notNull().unique(),
+  plays: integer("plays").notNull().default(0),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type Game = InferSelectModel<typeof game>;
 
 export const userIntegration = pgTable("UserIntegration", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

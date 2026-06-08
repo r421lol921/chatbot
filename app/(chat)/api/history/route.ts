@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
   const session = await auth();
 
   if (!session?.user) {
-    return new ChatbotError("unauthorized:chat").toResponse();
+    // Return empty history for unauthenticated requests instead of 401
+    // so the sidebar shows the empty state without erroring.
+    return Response.json({ chats: [], hasMore: false });
   }
 
   const chats = await getChatsByUserId({

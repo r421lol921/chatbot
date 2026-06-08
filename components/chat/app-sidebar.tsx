@@ -1,15 +1,16 @@
 "use client";
 
 import {
-  CreditCardIcon,
+  GamepadIcon,
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
+  SparklesIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
+type User = { id?: string; email?: string | null; name?: string | null; image?: string | null };
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
@@ -19,6 +20,8 @@ import {
   SidebarHistory,
 } from "@/components/chat/sidebar-history";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
+import { PromptEditorModal } from "@/components/chat/prompt-editor-modal";
+import type { UserType } from "@/app/(auth)/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -45,11 +48,12 @@ import {
 } from "../ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
-export function AppSidebar({ user }: { user: User | undefined }) {
+export function AppSidebar({ user, userType }: { user: User | undefined; userType?: UserType }) {
   const router = useRouter();
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
 
   const handleDeleteAll = () => {
     setShowDeleteAllDialog(false);
@@ -130,15 +134,29 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                    onClick={() => {
+                      setOpenMobile(false);
+                      setShowPromptEditor(true);
+                    }}
+                    tooltip="Customize Prompt"
+                  >
+                    <SparklesIcon className="size-4" />
+                    <span className="text-[13px]">Prompt</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
                     className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    tooltip="Plans"
+                    tooltip="Explore"
                   >
-                    <Link href="/plans" onClick={() => setOpenMobile(false)}>
-                      <CreditCardIcon className="size-4" />
-                      <span className="text-[13px]">Plans</span>
+                    <Link href="/explore" onClick={() => setOpenMobile(false)}>
+                      <GamepadIcon className="size-4" />
+                      <span className="text-[13px]">Explore</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -149,7 +167,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border pt-2 pb-3">
           {user ? (
-            <SidebarUserNav user={user} />
+            <SidebarUserNav user={user} userType={userType} />
           ) : (
             <div className="flex flex-col gap-1.5 px-2 group-data-[collapsible=icon]:hidden">
               <Link
@@ -190,6 +208,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PromptEditorModal 
+        open={showPromptEditor} 
+        onOpenChange={setShowPromptEditor} 
+      />
     </>
   );
 }

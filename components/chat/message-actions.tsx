@@ -49,33 +49,33 @@ export function PureMessageActions({
   };
 
   if (message.role === "user") {
-    return (
-      <Actions className="-mr-0.5 justify-end opacity-0 transition-opacity duration-150 group-hover/message:opacity-100">
-        <div className="flex items-center gap-0.5">
-          {onEdit && (
-            <Action
-              className="size-7 text-muted-foreground/50 hover:text-foreground"
-              data-testid="message-edit-button"
-              onClick={onEdit}
-              tooltip="Edit"
-            >
-              <PencilEditIcon />
-            </Action>
-          )}
+  return (
+    <Actions className="-mr-0.5 justify-end opacity-0 transition-opacity duration-150 group-hover/message:opacity-100 [@media(hover:none)]:opacity-100">
+      <div className="flex items-center gap-0.5">
+        {onEdit && (
           <Action
             className="size-7 text-muted-foreground/50 hover:text-foreground"
-            onClick={handleCopy}
-            tooltip="Copy"
+            data-testid="message-edit-button"
+            onClick={onEdit}
+            tooltip="Edit"
           >
-            <CopyIcon />
+            <PencilEditIcon />
           </Action>
-        </div>
-      </Actions>
-    );
-  }
+        )}
+        <Action
+          className="size-7 text-muted-foreground/50 hover:text-foreground"
+          onClick={handleCopy}
+          tooltip="Copy"
+        >
+          <CopyIcon />
+        </Action>
+      </div>
+    </Actions>
+  );
+}
 
   return (
-    <Actions className="-ml-0.5 opacity-0 transition-opacity duration-150 group-hover/message:opacity-100">
+    <Actions className="-ml-0.5 opacity-0 transition-opacity duration-150 group-hover/message:opacity-100 [@media(hover:none)]:opacity-100">
       <Action
         className="text-muted-foreground/50 hover:text-foreground"
         onClick={handleCopy}

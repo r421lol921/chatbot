@@ -382,6 +382,15 @@ const PurePreviewMessage = ({
     />
   );
 
+  // Whether the model provided actual reasoning parts
+  const hasReasoningParts = message.parts?.some(
+    (part) => part.type === "reasoning" && "text" in part && part.text?.trim().length > 0
+  );
+
+  // Show a synthetic reasoning block for models that don't emit reasoning parts:
+  // visible while streaming and collapses to "Thought for X seconds" after done.
+  const showSyntheticReasoning = isAssistant && !hasReasoningParts;
+
   const content = isThinking ? (
     <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
       <Shimmer className="font-medium" duration={1}>
@@ -391,6 +400,9 @@ const PurePreviewMessage = ({
   ) : (
     <>
       {attachments}
+      {showSyntheticReasoning && (
+        <MessageReasoning isLoading={isLoading} reasoning="" />
+      )}
       {parts}
       {actions}
     </>

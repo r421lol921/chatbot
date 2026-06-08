@@ -9,18 +9,18 @@ type Entitlements = {
 
 export const entitlementsByUserType: Record<UserType, Entitlements> = {
   guest: {
-    maxMessagesPerHour: 1,
+    maxMessagesPerHour: 25,
     messageIntervalHours: 7,
     canUseLio2: false,
   },
   regular: {
-    maxMessagesPerHour: 1,
+    maxMessagesPerHour: 25,
     messageIntervalHours: 7,
     canUseLio2: false,
   },
   plus: {
-    maxMessagesPerHour: 1,
-    messageIntervalHours: 5,
+    maxMessagesPerHour: 1000,
+    messageIntervalHours: 1,
     canUseLio2: true,
   },
 };

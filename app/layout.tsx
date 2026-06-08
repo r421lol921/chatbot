@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "PeytOtoria",
@@ -58,8 +57,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      className={`${geist.variable} ${geistMono.variable}`}
+      <html
+      className={`${geist.variable} ${geistMono.variable} bg-background`}
       lang="en"
       suppressHydrationWarning
     >
@@ -74,15 +73,11 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           disableTransitionOnChange
           enableSystem
         >
-          <SessionProvider
-            basePath={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth`}
-          >
             <TooltipProvider>{children}</TooltipProvider>
-          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>
