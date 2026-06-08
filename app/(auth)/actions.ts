@@ -1,5 +1,7 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,17 +25,24 @@ export const login = async (
     });
 
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
       return { status: "failed" };
     }
 
-    return { status: "success" };
+    redirect("/");
   } catch (error) {
+    // redirect() throws internally — must re-throw it
+    if (isRedirectError(error)) throw error;
     if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
   }
+
+  return { status: "success" };
 };
 
 export type RegisterActionState = {
@@ -58,27 +67,43 @@ export const register = async (
 
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo:
           process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/auth/callback`,
+          `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback`,
       },
     });
 
     if (error) {
-      // Supabase returns "User already registered" for duplicate emails
-      if (error.message?.toLowerCase().includes("already")) {
+      if (
+        error.message?.toLowerCase().includes("already") ||
+        error.message?.toLowerCase().includes("registered")
+      ) {
         return { status: "user_exists" };
       }
       return { status: "failed" };
     }
 
+    // user already existed — identities array is empty
+    if (data.user && data.user.identities?.length === 0) {
+      return { status: "user_exists" };
+    }
+
+    // Email confirmation disabled — session is available immediately
+    if (data.session) {
+      redirect("/");
+    }
+
+    // Email confirmation required
     return { status: "success" };
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
   }
+
+  return { status: "success" };
 };

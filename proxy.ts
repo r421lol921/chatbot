@@ -9,13 +9,12 @@ export async function proxy(request: NextRequest) {
     return new Response("pong", { status: 200 });
   }
 
-  // Let Supabase auth API, our guest route, and the OAuth callback through
-  // without a session check to avoid infinite redirect loops.
+  // Let auth API routes, the callback route, login, and register through without a session check.
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register")
+    pathname === "/login" ||
+    pathname === "/register"
   ) {
     return NextResponse.next();
   }
@@ -43,7 +42,7 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    // For API routes and assets, just let the request through unauthenticated.
+    // For API routes and assets, let the request through unauthenticated.
     return supabaseResponse;
   }
 

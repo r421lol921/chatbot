@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { randomUUID } from "crypto";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const rawRedirect = searchParams.get("redirectUrl") || "/";
-  const redirectUrl =
-    rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
-      ? rawRedirect
-      : "/";
-
   const supabase = await createClient();
 
-  // If there is already a valid session, just redirect.
+  // If there is already a valid session, just return success.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -19,17 +13,34 @@ export async function GET(request: Request) {
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
   if (user) {
-    return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
-  }
-
-  // Create an anonymous (guest) Supabase session.
-  const { error } = await supabase.auth.signInAnonymously();
-
-  if (error) {
-    // Fall back to the home page — redirecting to /login would cause a loop
-    // because the middleware would send the user back here again.
     return NextResponse.redirect(new URL(`${base}/`, request.url));
   }
 
-  return NextResponse.redirect(new URL(`${base}${redirectUrl}`, request.url));
+  // Try anonymous sign-in first (requires enabling in Supabase dashboard).
+  const { error: anonError } = await supabase.auth.signInAnonymously();
+
+  if (!anonError) {
+    return NextResponse.redirect(new URL(`${base}/`, request.url));
+  }
+
+  // Fallback: create a guest user with a generated email and password.
+  const guestId = randomUUID();
+  const guestEmail = `guest-${guestId}@guest.lio.chat`;
+  const guestPassword = randomUUID();
+
+  const { error: signUpError } = await supabase.auth.signUp({
+    email: guestEmail,
+    password: guestPassword,
+    options: {
+      data: { is_guest: true },
+    },
+  });
+
+  if (signUpError) {
+    console.error("[guest] Guest signup failed:", signUpError.message);
+    // Fall back to home — redirecting to /login would cause a redirect loop.
+    return NextResponse.redirect(new URL(`${base}/`, request.url));
+  }
+
+  return NextResponse.redirect(new URL(`${base}/`, request.url));
 }
