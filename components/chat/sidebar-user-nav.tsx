@@ -4,7 +4,7 @@ import { ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 type User = { id?: string; email?: string | null; name?: string | null; image?: string | null };
 import { useTheme } from "next-themes";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import type { UserType } from "@/app/(auth)/auth";
 import {
   DropdownMenu,
@@ -111,8 +111,7 @@ export function SidebarUserNav({ user, userType: userTypeProp }: { user: User; u
                   if (isGuest) {
                     router.push("/register");
                   } else {
-                    const supabase = createClient();
-                    await supabase.auth.signOut();
+                    await authClient.signOut();
                     router.push("/login");
                     router.refresh();
                   }
