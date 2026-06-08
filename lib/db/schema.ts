@@ -12,11 +12,11 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const user = pgTable("User", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  email: varchar("email", { length: 255 }).notNull(),
-  password: varchar("password", { length: 256 }),
-  name: text("name"),
+// Better Auth manages the "user" table directly — we mirror it here for Drizzle queries.
+export const user = pgTable("user", {
+  id: text("id").primaryKey().notNull(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAnonymous: boolean("isAnonymous").notNull().default(false),
@@ -30,12 +30,10 @@ export const user = pgTable("User", {
 export type User = InferSelectModel<typeof user>;
 
 export const chat = pgTable("Chat", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  id: text("id").primaryKey().notNull(),
   createdAt: timestamp("createdAt").notNull(),
   title: text("title").notNull(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => user.id),
+  userId: text("userId").notNull(),
   visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
@@ -45,8 +43,8 @@ export const chat = pgTable("Chat", {
 export type Chat = InferSelectModel<typeof chat>;
 
 export const chatView = pgTable("ChatView", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  chatId: uuid("chatId").notNull().references(() => chat.id, { onDelete: "cascade" }),
+  id: text("id").primaryKey().notNull(),
+  chatId: text("chatId").notNull().references(() => chat.id, { onDelete: "cascade" }),
   viewedAt: timestamp("viewedAt").notNull().defaultNow(),
   visitorId: varchar("visitorId", { length: 64 }),
 });
@@ -54,8 +52,8 @@ export const chatView = pgTable("ChatView", {
 export type ChatView = InferSelectModel<typeof chatView>;
 
 export const message = pgTable("Message_v2", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  chatId: uuid("chatId")
+  id: text("id").primaryKey().notNull(),
+  chatId: text("chatId")
     .notNull()
     .references(() => chat.id),
   role: varchar("role").notNull(),
@@ -69,10 +67,10 @@ export type DBMessage = InferSelectModel<typeof message>;
 export const vote = pgTable(
   "Vote_v2",
   {
-    chatId: uuid("chatId")
+    chatId: text("chatId")
       .notNull()
       .references(() => chat.id),
-    messageId: uuid("messageId")
+    messageId: text("messageId")
       .notNull()
       .references(() => message.id),
     isUpvoted: boolean("isUpvoted").notNull(),
@@ -87,16 +85,14 @@ export type Vote = InferSelectModel<typeof vote>;
 export const document = pgTable(
   "Document",
   {
-    id: uuid("id").notNull().defaultRandom(),
+    id: text("id").notNull(),
     createdAt: timestamp("createdAt").notNull(),
     title: text("title").notNull(),
     content: text("content"),
     kind: varchar("text", { enum: ["text", "code", "image", "sheet"] })
       .notNull()
       .default("text"),
-    userId: uuid("userId")
-      .notNull()
-      .references(() => user.id),
+    userId: text("userId").notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.createdAt] }),
@@ -108,16 +104,14 @@ export type Document = InferSelectModel<typeof document>;
 export const suggestion = pgTable(
   "Suggestion",
   {
-    id: uuid("id").notNull().defaultRandom(),
-    documentId: uuid("documentId").notNull(),
+    id: text("id").notNull(),
+    documentId: text("documentId").notNull(),
     documentCreatedAt: timestamp("documentCreatedAt").notNull(),
     originalText: text("originalText").notNull(),
     suggestedText: text("suggestedText").notNull(),
     description: text("description"),
     isResolved: boolean("isResolved").notNull().default(false),
-    userId: uuid("userId")
-      .notNull()
-      .references(() => user.id),
+    userId: text("userId").notNull(),
     createdAt: timestamp("createdAt").notNull(),
   },
   (table) => ({
@@ -134,8 +128,8 @@ export type Suggestion = InferSelectModel<typeof suggestion>;
 export const stream = pgTable(
   "Stream",
   {
-    id: uuid("id").notNull().defaultRandom(),
-    chatId: uuid("chatId").notNull(),
+    id: text("id").notNull(),
+    chatId: text("chatId").notNull(),
     createdAt: timestamp("createdAt").notNull(),
   },
   (table) => ({
@@ -150,11 +144,11 @@ export const stream = pgTable(
 export type Stream = InferSelectModel<typeof stream>;
 
 export const reaction = pgTable("MessageReaction", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  messageId: uuid("messageId")
+  id: text("id").primaryKey().notNull(),
+  messageId: text("messageId")
     .notNull()
     .references(() => message.id),
-  userId: uuid("userId").references(() => user.id),
+  userId: text("userId"),
   emoji: varchar("emoji", { length: 10 }).notNull(),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
 });

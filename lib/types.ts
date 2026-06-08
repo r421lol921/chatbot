@@ -58,4 +58,6 @@ export type Attachment = {
   name: string;
   url: string;
   contentType: string;
+  mediaType?: "image" | "video" | "audio";
+  metadata?: Record<string, string>;
 };

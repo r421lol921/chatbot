@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const authFormSchema = z.object({
   email: z.string().email(),
@@ -24,19 +25,17 @@ export const login = async (
       password: formData.get("password"),
     });
 
-    const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const result = await auth.api.signInEmail({
+      body: { email, password },
+      headers: await headers(),
     });
 
-    if (error) {
+    if (!result || result.user === null) {
       return { status: "failed" };
     }
 
     redirect("/");
   } catch (error) {
-    // redirect() throws internally — must re-throw it
     if (isRedirectError(error)) throw error;
     if (error instanceof z.ZodError) return { status: "invalid_data" };
     return { status: "failed" };
@@ -65,43 +64,27 @@ export const register = async (
       password: formData.get("password"),
     });
 
-    const supabase = await createClient();
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo:
-          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback`,
+    const result = await auth.api.signUpEmail({
+      body: {
+        email,
+        password,
+        name: email.split("@")[0],
       },
+      headers: await headers(),
     });
 
-    if (error) {
-      if (
-        error.message?.toLowerCase().includes("already") ||
-        error.message?.toLowerCase().includes("registered")
-      ) {
-        return { status: "user_exists" };
-      }
+    if (!result || result.user === null) {
       return { status: "failed" };
     }
 
-    // user already existed — identities array is empty
-    if (data.user && data.user.identities?.length === 0) {
-      return { status: "user_exists" };
-    }
-
-    // Email confirmation disabled — session is available immediately
-    if (data.session) {
-      redirect("/");
-    }
-
-    // Email confirmation required
-    return { status: "success" };
+    redirect("/");
   } catch (error) {
     if (isRedirectError(error)) throw error;
     if (error instanceof z.ZodError) return { status: "invalid_data" };
+    const msg = error instanceof Error ? error.message.toLowerCase() : "";
+    if (msg.includes("already") || msg.includes("exists")) {
+      return { status: "user_exists" };
+    }
     return { status: "failed" };
   }
 

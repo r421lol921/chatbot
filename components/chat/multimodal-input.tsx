@@ -254,7 +254,7 @@ function PureMultimodalInput({
         const data = await response.json();
 
         if (!response.ok) {
-          toast.error(data.error ?? "Failed to upload file");
+          toast.error(data.error ?? "Upload failed. Please try again.");
           return undefined;
         }
 
@@ -267,9 +267,11 @@ function PureMultimodalInput({
           url: data.url,
           name: data.name,
           contentType: data.contentType,
+          mediaType: data.mediaType,
+          metadata: data.metadata,
         };
       } catch (_error) {
-        toast.error("Failed to upload file, please try again!");
+        toast.error("Upload failed. Please try again.");
         return undefined;
       }
     },
@@ -286,8 +288,9 @@ function PureMultimodalInput({
       try {
         const results = await Promise.all(files.map((file) => uploadFile(file)));
 
-        const imageAttachments: Attachment[] = [];
+        const mediaAttachments: Attachment[] = [];
         const textParts: string[] = [];
+        const mediaNotes: string[] = [];
 
         for (const result of results) {
           if (!result) continue;
@@ -296,25 +299,41 @@ function PureMultimodalInput({
               `--- File: ${result.name} ---\n${result.textContent}\n--- End of file ---`
             );
           } else {
-            imageAttachments.push(result as Attachment);
+            const att = result as Attachment;
+            mediaAttachments.push(att);
+            // Build a metadata note for audio/video so the AI can discuss it
+            if (att.mediaType === "audio" && att.metadata) {
+              const m = att.metadata;
+              mediaNotes.push(
+                `[Audio file attached: "${att.name}" — size: ${m.size}${m.possibleArtist ? `, possible artist: ${m.possibleArtist}` : ""}${m.possibleTitle ? `, possible title: ${m.possibleTitle}` : ""}. Analyze its metadata, discuss the likely genre, mood, instrumentation, and anything notable about the track.]`
+              );
+            } else if (att.mediaType === "video" && att.metadata) {
+              const m = att.metadata;
+              mediaNotes.push(
+                `[Video file attached: "${att.name}" — size: ${m.size}. Analyze and describe what this video likely contains based on its name and any other context you have.]`
+              );
+            }
           }
         }
 
-        if (imageAttachments.length > 0) {
-          setAttachments((current) => [...current, ...imageAttachments]);
+        if (mediaAttachments.length > 0) {
+          setAttachments((current) => [...current, ...mediaAttachments]);
         }
 
-        if (textParts.length > 0) {
-          const textToAppend = textParts.join("\n\n");
+        const allNotes = [...textParts, ...mediaNotes];
+        if (allNotes.length > 0) {
+          const textToAppend = allNotes.join("\n\n");
           setInput((current) =>
             current ? `${current}\n\n${textToAppend}` : textToAppend
           );
-          toast.success(
-            `${textParts.length} text file${textParts.length > 1 ? "s" : ""} added to message`
-          );
+          if (textParts.length > 0) {
+            toast.success(
+              `${textParts.length} text file${textParts.length > 1 ? "s" : ""} added to message`
+            );
+          }
         }
       } catch (_error) {
-        toast.error("Failed to upload files");
+        toast.error("Upload failed. Please try again.");
       } finally {
         setUploadQueue([]);
         if (event.target) event.target.value = "";
@@ -411,7 +430,7 @@ function PureMultimodalInput({
         )}
 
       <input
-        accept="image/jpeg,image/png,image/gif,image/webp,text/plain,text/markdown,.txt,.md,.csv,.log"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/wav,audio/ogg,audio/flac,audio/aac,audio/x-m4a,text/plain,text/markdown,.txt,.md,.csv,.log,.mp4,.webm,.mov,.mp3,.wav,.ogg,.flac,.m4a,.aac"
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
@@ -612,7 +631,7 @@ function PureAttachmentsButton({
         event.preventDefault();
         fileInputRef.current?.click();
       }}
-      title="Attach images or text files"
+      title="Attach images, video, audio, or text files (up to 5 MB)"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
