@@ -17,6 +17,8 @@ import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { RateLimitBanner } from "./rate-limit-banner";
+import { NewChatBanner } from "./new-chat-banner";
+import { useCookieChats } from "@/hooks/use-cookie-chats";
 
 export function ChatShell() {
   const {
@@ -45,6 +47,22 @@ export function ChatShell() {
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
   
+  const { saveChat } = useCookieChats();
+
+  // Save chat to cookies whenever messages arrive (max 2 kept)
+  useEffect(() => {
+    if (messages.length > 0) {
+      const firstUserMsg = messages.find((m) => m.role === "user");
+      const title =
+        firstUserMsg?.parts
+          ?.filter((p) => p.type === "text")
+          .map((p) => (p as { text: string }).text)
+          .join("")
+          .slice(0, 60) ?? "Chat";
+      saveChat({ id: chatId, title, createdAt: Date.now() });
+    }
+  }, [chatId, messages, saveChat]);
+
   const webllm = useWebLLM();
   const [localStatus, setLocalStatus] = useState<"ready" | "submitted">("ready");
   
@@ -209,6 +227,7 @@ export function ChatShell() {
             />
 
             <div className="sticky bottom-0 z-1 flex w-full flex-col gap-0 border-t-0 bg-background pt-1 pb-3 md:pb-4">
+              <NewChatBanner messageCount={messages.length} threshold={5} />
               <RateLimitBanner />
               <div className="mx-auto w-full max-w-4xl px-2 md:px-4">
               {!isReadonly && (
