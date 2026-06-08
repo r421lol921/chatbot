@@ -159,7 +159,21 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupContent>
           <div className="flex w-full flex-row items-center justify-center gap-2 px-2 text-[13px] text-sidebar-foreground/60">
-            Login to save and revisit previous chats!
+            Sign in to save and revisit previous chats!
+          </div>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  // Guests (anonymous users) — chats are session-only, not persisted to history.
+  const isGuest = !user.email || user.email.includes("@guest.lio.chat");
+  if (isGuest && !isLoading && hasEmptyChatHistory) {
+    return (
+      <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroupContent>
+          <div className="flex w-full flex-row items-center justify-center gap-2 px-2 text-center text-[13px] text-sidebar-foreground/60">
+            Sign up to save your chat history!
           </div>
         </SidebarGroupContent>
       </SidebarGroup>
