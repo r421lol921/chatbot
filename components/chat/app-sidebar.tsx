@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  CreditCardIcon,
+  GamepadIcon,
   MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
@@ -152,11 +152,11 @@ export function AppSidebar({ user, userType }: { user: User | undefined; userTyp
                   <SidebarMenuButton
                     asChild
                     className="rounded-lg text-sidebar-foreground/60 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    tooltip="Plans"
+                    tooltip="Explore"
                   >
-                    <Link href="/plans" onClick={() => setOpenMobile(false)}>
-                      <CreditCardIcon className="size-4" />
-                      <span className="text-[13px]">Plans</span>
+                    <Link href="/explore" onClick={() => setOpenMobile(false)}>
+                      <GamepadIcon className="size-4" />
+                      <span className="text-[13px]">Explore</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
