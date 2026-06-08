@@ -156,12 +156,33 @@ export type ReasoningTriggerProps = ComponentProps<
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer className="font-medium" duration={1}>Thinking...</Shimmer>;
+    return (
+      <span className="inline-flex items-center gap-2.5">
+        {/* Pulsing orb — same style as ChatGPT/Claude thinking indicator */}
+        <span className="relative flex size-3.5 shrink-0">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-muted-foreground/40 duration-1000" />
+          <span className="relative inline-flex size-3.5 rounded-full bg-muted-foreground/60" />
+        </span>
+        <Shimmer className="text-[13px] font-normal text-muted-foreground" duration={1.2}>
+          Thinking…
+        </Shimmer>
+      </span>
+    );
   }
-  if (duration === undefined) {
-    return <p>Thought for a few seconds</p>;
-  }
-  return <p>Thought for {duration} seconds</p>;
+
+  const durationText =
+    duration === undefined
+      ? "a few seconds"
+      : duration === 1
+        ? "1 second"
+        : `${duration} seconds`;
+
+  return (
+    <span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+      Thought for{" "}
+      <span className="text-foreground/70">{durationText}</span>
+    </span>
+  );
 };
 
 export const ReasoningTrigger = memo(
@@ -176,7 +197,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-[13px] leading-[1.65] transition-colors hover:text-foreground",
+          "group flex w-full items-center gap-2 py-0.5 text-[13px] leading-[1.65] transition-opacity hover:opacity-80",
           className
         )}
         {...props}
@@ -184,12 +205,14 @@ export const ReasoningTrigger = memo(
         {children ?? (
           <>
             {getThinkingMessage(isStreaming, duration)}
-            <ChevronDownIcon
-              className={cn(
-                "size-4 transition-transform",
-                isOpen ? "rotate-180" : "rotate-0"
-              )}
-            />
+            {!isStreaming && (
+              <ChevronDownIcon
+                className={cn(
+                  "size-3.5 shrink-0 text-muted-foreground/50 transition-transform",
+                  isOpen ? "rotate-180" : "rotate-0"
+                )}
+              />
+            )}
           </>
         )}
       </CollapsibleTrigger>

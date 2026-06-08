@@ -37,8 +37,9 @@ export async function GET(request: Request) {
   });
 
   if (signUpError) {
-    console.error("[v0] Guest signup failed:", signUpError.message);
-    return NextResponse.redirect(new URL(`${base}/login`, request.url));
+    console.error("[guest] Guest signup failed:", signUpError.message);
+    // Fall back to home — redirecting to /login would cause a redirect loop.
+    return NextResponse.redirect(new URL(`${base}/`, request.url));
   }
 
   return NextResponse.redirect(new URL(`${base}/`, request.url));
