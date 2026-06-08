@@ -1,26 +1,46 @@
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { signIn } from "@/app/(auth)/auth";
-import { isDevelopmentEnvironment } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
+import { randomUUID } from "crypto";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const rawRedirect = searchParams.get("redirectUrl") || "/";
-  const redirectUrl =
-    rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
-      ? rawRedirect
-      : "/";
+  const supabase = await createClient();
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET ?? "lio-dev-fallback-secret-change-in-production",
-    secureCookie: !isDevelopmentEnvironment,
-  });
+  // If there is already a valid session, just return success.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (token) {
-    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+  if (user) {
     return NextResponse.redirect(new URL(`${base}/`, request.url));
   }
 
-  return signIn("guest", { redirect: true, redirectTo: redirectUrl });
+  // Try anonymous sign-in first (requires enabling in Supabase dashboard).
+  const { error: anonError } = await supabase.auth.signInAnonymously();
+
+  if (!anonError) {
+    return NextResponse.redirect(new URL(`${base}/`, request.url));
+  }
+
+  // Fallback: create a guest user with a generated email and password.
+  const guestId = randomUUID();
+  const guestEmail = `guest-${guestId}@guest.lio.chat`;
+  const guestPassword = randomUUID();
+
+  const { error: signUpError } = await supabase.auth.signUp({
+    email: guestEmail,
+    password: guestPassword,
+    options: {
+      data: { is_guest: true },
+    },
+  });
+
+  if (signUpError) {
+    console.error("[guest] Guest signup failed:", signUpError.message);
+    // Fall back to home — redirecting to /login would cause a redirect loop.
+    return NextResponse.redirect(new URL(`${base}/`, request.url));
+  }
+
+  return NextResponse.redirect(new URL(`${base}/`, request.url));
 }
